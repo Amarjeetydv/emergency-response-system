@@ -1,0 +1,55 @@
+CREATE DATABASE ercs;
+
+-- CREATE TABLE `users` (
+--   `id` int NOT NULL AUTO_INCREMENT,
+--   `name` varchar(255) NOT NULL,
+--   `email` varchar(255) NOT NULL,
+--   `password` varchar(255) NOT NULL,
+--   `role` enum('citizen','responder','dispatcher') NOT NULL,
+--   `phone` varchar(20) DEFAULT NULL,
+--   `latitude` decimal(10,8) DEFAULT NULL,
+--   `longitude` decimal(11,8) DEFAULT NULL,
+--   `availability` enum('available','unavailable') DEFAULT 'available',
+--   PRIMARY KEY (`id`),
+--   UNIQUE KEY `email` (`email`)
+-- ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('citizen', 'responder', 'admin') DEFAULT 'citizen',
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE users MODIFY COLUMN role ENUM('citizen', 'police', 'ambulance', 'fire', 'admin', 'responder', 'dispatcher') NOT NULL;
+
+
+
+CREATE TABLE `emergencies` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `citizen_id` int NOT NULL,
+  `emergency_type` varchar(255) NOT NULL,
+  `latitude` decimal(10,8) NOT NULL,
+  `longitude` decimal(11,8) NOT NULL,
+  `status` enum('pending','assigned','resolved','cancelled') NOT NULL DEFAULT 'pending',
+  `assigned_responder` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `citizen_id` (`citizen_id`),
+  KEY `assigned_responder` (`assigned_responder`),
+  CONSTRAINT `emergencies_ibfk_1` FOREIGN KEY (`citizen_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `emergencies_ibfk_2` FOREIGN KEY (`assigned_responder`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    emergency_id INT NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    updated_by INT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (emergency_id) REFERENCES emergencies(id) ON DELETE CASCADE,
+    FOREIGN KEY (updated_by) REFERENCES users(id)
+);
