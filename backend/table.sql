@@ -14,14 +14,16 @@ CREATE DATABASE ercs;
 --   UNIQUE KEY `email` (`email`)
 -- ) ENGINE=InnoDB;
 
+
 CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    role ENUM('citizen', 'responder', 'admin') DEFAULT 'citizen',
-    phone VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  role ENUM('citizen', 'police', 'ambulance', 'fire', 'admin', 'responder', 'dispatcher') DEFAULT 'citizen',
+  phone VARCHAR(20),
+  approval_status ENUM('pending', 'approved', 'rejected') DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 ALTER TABLE users MODIFY COLUMN role ENUM('citizen', 'police', 'ambulance', 'fire', 'admin', 'responder', 'dispatcher') NOT NULL;
@@ -34,7 +36,7 @@ CREATE TABLE `emergencies` (
   `emergency_type` varchar(255) NOT NULL,
   `latitude` decimal(10,8) NOT NULL,
   `longitude` decimal(11,8) NOT NULL,
-  `status` enum('pending','assigned','resolved','cancelled') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','accepted','in_progress','completed','cancelled') NOT NULL DEFAULT 'pending',
   `assigned_responder` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -53,3 +55,7 @@ CREATE TABLE IF NOT EXISTS logs (
     FOREIGN KEY (emergency_id) REFERENCES emergencies(id) ON DELETE CASCADE,
     FOREIGN KEY (updated_by) REFERENCES users(id)
 );
+
+
+UPDATE users SET role = 'admin' WHERE email = 'adminuser@example.com';
+ALTER TABLE users ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected') DEFAULT NULL;
