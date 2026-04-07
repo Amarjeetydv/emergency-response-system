@@ -11,6 +11,7 @@ dotenv.config();
 // Route files
 const authRoutes = require('./routes/authRoutes');
 const emergencyRoutes = require('./routes/emergencyRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +33,7 @@ app.set('socketio', io);
 // Mount routers
 app.use('/api/auth', authRoutes);
 app.use('/api/emergencies', emergencyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {

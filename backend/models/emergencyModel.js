@@ -19,17 +19,43 @@ const Emergency = {
 
   findAll: async () => {
     const sql = `
-      SELECT e.*, u.name as citizen_name 
-      FROM emergencies e 
-      JOIN users u ON e.citizen_id = u.id 
+      SELECT e.*, u.name as citizen_name, r.name as responder_name
+      FROM emergencies e
+      JOIN users u ON e.citizen_id = u.id
+      LEFT JOIN users r ON e.assigned_responder = r.id
       ORDER BY e.created_at DESC
     `;
     const [rows] = await db.execute(sql);
     return rows;
   },
 
+  findByCitizenId: async (citizenId) => {
+    const sql = `
+      SELECT e.*, u.name as citizen_name, r.name as responder_name
+      FROM emergencies e
+      JOIN users u ON e.citizen_id = u.id
+      LEFT JOIN users r ON e.assigned_responder = r.id
+      WHERE e.citizen_id = ?
+      ORDER BY e.created_at DESC
+    `;
+    const [rows] = await db.execute(sql, [citizenId]);
+    return rows;
+  },
+
   findById: async (id) => {
     const sql = 'SELECT * FROM emergencies WHERE id = ?';
+    const [rows] = await db.execute(sql, [id]);
+    return rows[0];
+  },
+
+  findByIdDetailed: async (id) => {
+    const sql = `
+      SELECT e.*, u.name as citizen_name, r.name as responder_name
+      FROM emergencies e
+      JOIN users u ON e.citizen_id = u.id
+      LEFT JOIN users r ON e.assigned_responder = r.id
+      WHERE e.id = ?
+    `;
     const [rows] = await db.execute(sql, [id]);
     return rows[0];
   },
