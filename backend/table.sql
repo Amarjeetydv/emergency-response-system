@@ -38,6 +38,8 @@ CREATE TABLE `emergencies` (
   `longitude` decimal(11,8) NOT NULL,
   `status` enum('pending','accepted','in_progress','completed','cancelled') NOT NULL DEFAULT 'pending',
   `assigned_responder` int DEFAULT NULL,
+  `responder_lat` decimal(10,8) DEFAULT NULL,
+  `responder_lng` decimal(11,8) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `citizen_id` (`citizen_id`),
@@ -59,3 +61,7 @@ CREATE TABLE IF NOT EXISTS logs (
 
 UPDATE users SET role = 'admin' WHERE email = 'adminuser@example.com';
 ALTER TABLE users ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected') DEFAULT NULL;
+
+-- Run these commands to fix the "Unknown column" error in your existing database
+ALTER TABLE emergencies ADD COLUMN responder_lat DECIMAL(10,8) DEFAULT NULL AFTER assigned_responder;
+ALTER TABLE emergencies ADD COLUMN responder_lng DECIMAL(11,8) DEFAULT NULL AFTER responder_lat;

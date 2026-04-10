@@ -3,6 +3,18 @@ const Log = require('../models/logModel');
 
 const ALLOWED_STATUSES = ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'];
 
+// Helper: Haversine formula to calculate distance in Kilometers
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 function canActAsResponder(user) {
   if (!user) return false;
   if (['responder', 'dispatcher'].includes(user.role)) return true;
@@ -78,7 +90,16 @@ const getAllEmergencies = async (req, res) => {
       return res.json(rows);
     }
     if (canViewEmergencyFeed(req.user)) {
-      const rows = await Emergency.findAll();
+      let rows = await Emergency.findAll();
+      const { lat, lng } = req.query;
+
+      // Nearest Responder Logic: Filter by distance (50km radius)
+      if (lat && lng) {
+        const rLat = parseFloat(lat);
+        const rLng = parseFloat(lng);
+        rows = rows.filter(e => calculateDistance(rLat, rLng, e.latitude, e.longitude) <= 50);
+      }
+
       return res.json(rows);
     }
     return res.status(403).json({ message: 'Forbidden' });
@@ -87,10 +108,37 @@ const getAllEmergencies = async (req, res) => {
   }
 };
 
+// @desc    Specific handler for accepting a request with location
+// @route   POST /api/emergencies/accept-request
+const acceptRequest = async (req, res) => {
+  const { request_id, responder_lat, responder_lng } = req.body;
+  const responder_id = req.user.id;
+
+  try {
+    const existing = await Emergency.findById(request_id);
+    if (!existing || existing.status !== 'pending') {
+      return res.status(400).json({ message: 'Request is no longer available' });
+    }
+
+    // Update database: query should handle the additional responder location fields
+    await Emergency.update('accepted', responder_id, responder_lat, responder_lng, request_id);
+    const updated = await Emergency.findByIdDetailed(request_id);
+
+    const io = req.app.get('socketio');
+    // Real-time: Notify everyone that the request is taken
+    io.emit('requestAccepted', updated);
+    io.emit('emergencyUpdate', updated);
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Update emergency status
 // @route   PUT /api/emergencies/:id
-const updateEmergencyStatus = async (req, res) => {
-  const { status, responder_id } = req.body;
+const updateStatus = async (req, res) => {
+  const { status, responder_id, responder_lat, responder_lng } = req.body;
   const emergencyId = Number(req.params.id);
 
   if (!status || !ALLOWED_STATUSES.includes(status)) {
@@ -115,7 +163,7 @@ const updateEmergencyStatus = async (req, res) => {
       if (!['pending', 'accepted', 'in_progress'].includes(existing.status)) {
         return res.status(400).json({ message: 'This emergency cannot be cancelled' });
       }
-      await Emergency.update(emergencyId, 'cancelled', null);
+      await Emergency.update('cancelled', null, null, null, emergencyId);
       await Log.create(emergencyId, 'cancelled', uid);
       const io = req.app.get('socketio');
       const payload = await Emergency.findByIdDetailed(emergencyId);
@@ -128,7 +176,7 @@ const updateEmergencyStatus = async (req, res) => {
     }
 
     if (isAdmin && status === 'cancelled') {
-      await Emergency.update(emergencyId, 'cancelled', existing.assigned_responder);
+      await Emergency.update('cancelled', existing.assigned_responder, null, null, emergencyId);
       await Log.create(emergencyId, 'cancelled', uid);
       const io = req.app.get('socketio');
       io.emit('emergencyUpdate', await Emergency.findByIdDetailed(emergencyId));
@@ -149,7 +197,10 @@ const updateEmergencyStatus = async (req, res) => {
       assignId = responder_id != null ? Number(responder_id) : uid;
     }
 
-    await Emergency.update(emergencyId, status, assignId);
+    // Strict cleaning of the status string to ensure it matches MySQL ENUM values exactly
+    const cleanStatus = String(status).trim().toLowerCase().replace(/[^a-z_]/g, '');
+    
+    await Emergency.update(cleanStatus, assignId, responder_lat, responder_lng, emergencyId);
     await Log.create(emergencyId, status, uid);
 
     const io = req.app.get('socketio');
@@ -162,4 +213,15 @@ const updateEmergencyStatus = async (req, res) => {
   }
 };
 
-module.exports = { createEmergency, getAllEmergencies, updateEmergencyStatus };
+// @desc    Get admin logs
+// @route   GET /api/emergencies/admin/logs
+const getAdminLogs = async (req, res) => {
+  try {
+    const logs = await Emergency.findAll();
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching logs' });
+  }
+};
+
+module.exports = { createEmergency, getAllEmergencies, updateStatus, acceptRequest, getAdminLogs };
