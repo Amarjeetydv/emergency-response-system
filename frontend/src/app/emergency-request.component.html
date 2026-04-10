@@ -1,0 +1,21 @@
+<div class="request-container">
+  <h2>Report Emergency</h2>
+  
+  <div class="form-group">
+    <label>Emergency Type</label>
+    <select [(ngModel)]="emergencyType">
+      <option value="Medical">Medical</option>
+      <option value="Fire">Fire</option>
+      <option value="Police">Police</option>
+    </select>
+  </div>
+
+  <div id="map" style="height: 400px; width: 100%; margin-top: 20px; border-radius: 8px;"></div>
+
+  <button 
+    (click)="submitRequest()" 
+    [disabled]="lat === null || isSubmitting" 
+    class="btn-submit">
+    {{ isSubmitting ? 'Reporting...' : 'Submit Emergency Report' }}
+  </button>
+</div>

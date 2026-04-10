@@ -1,0 +1,75 @@
+.auth-card {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  background: white;
+  text-align: center;
+
+  .subtitle {
+    color: #666;
+    margin-bottom: 1.5rem;
+  }
+
+  .error-banner {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border: 1px solid #f5c6cb;
+  }
+
+  .success-banner {
+    background: #d4edda;
+    color: #155724;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    border: 1px solid #c3e6cb;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    text-align: left;
+
+    input {
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 0.75rem;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+
+      &:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+    }
+
+    .error-text {
+      color: #dc3545;
+      margin-top: -0.5rem;
+      font-size: 0.85rem;
+    }
+  }
+
+  .footer-text {
+    margin-top: 1.5rem;
+    color: #666;
+    a {
+      color: #dc3545;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  }
+}

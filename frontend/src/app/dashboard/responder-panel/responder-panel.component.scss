@@ -1,0 +1,52 @@
+.emergency-card {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+
+  &.assigned-to-me {
+    border-left: 6px solid #28a745;
+    background: #f8fff9;
+  }
+}
+
+.btn-accept {
+  background-color: #dc3545; // Default Red
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+}
+
+.btn-feedback.accepted {
+  background-color: #28a745 !important; // Success Green
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  width: 100%;
+  font-weight: bold;
+  opacity: 1 !important;
+}
+
+.consent-box {
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  input { cursor: pointer; }
+  label { cursor: pointer; }
+}

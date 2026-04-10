@@ -1,0 +1,178 @@
+/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #0052cc;
+  --secondary: #6b778c;
+  --danger: #e63946;
+  --success: #2a9d8f;
+  --warning: #f4a261;
+  --bg-light: #f4f5f7;
+  --surface: #ffffff;
+  --text-main: #172b4d;
+  --sidebar-width: 260px;
+  --glass: rgba(255, 255, 255, 0.8);
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #0b1020;
+  color: var(--text-main);
+}
+
+/* Soft background rotator (cross-fade) */
+.bg-rotator {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.bg-rotator .bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  filter: saturate(1.05) contrast(1.05);
+  opacity: 0;
+  animation: bgFade 16s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* Default (medic) is the first image */
+.bg-rotator .bg1 {
+  background-image: url('/bg/medic.png');
+  opacity: 1;
+}
+.bg-rotator .bg2 { background-image: url('/bg/ambulance.png'); animation-delay: 4s; }
+.bg-rotator .bg3 { background-image: url('/bg/firefighters.png'); animation-delay: 8s; }
+.bg-rotator .bg4 { background-image: url('/bg/police.png'); animation-delay: 12s; }
+
+.bg-rotator .bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 14, 28, 0.78) 0%,
+    rgba(10, 14, 28, 0.86) 60%,
+    rgba(10, 14, 28, 0.92) 100%
+  );
+}
+
+/* Each layer: fade in, stay, fade out (one full cycle per layer). */
+@keyframes bgFade {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  40% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+/* Make app content readable on background */
+app-root {
+  display: block;
+  min-height: 100vh;
+}
+
+/* Subtle glass surface utility for pages that need it */
+.surface {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+}
+
+/* Global Card Styling */
+.card {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  border: none;
+  transition: all 0.2s;
+
+  &.btn-primary {
+    background: var(--primary);
+    color: white;
+    &:hover { background: #0043a4; }
+  }
+
+  &.btn-danger {
+    background: var(--danger);
+    color: white;
+    &:hover { background: #c82333; }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Status Badges */
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+
+  &.pending { background: #fff3e0; color: #ef6c00; }
+  &.accepted { background: #e3f2fd; color: #1565c0; }
+  &.in_progress { background: #f3e5f5; color: #7b1fa2; border: 1px solid #7b1fa2; }
+  &.completed { background: #e8f5e9; color: #2e7d32; }
+}
+
+/* Sidebar Layout */
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: #0747a6;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+@media (max-width: 768px) {
+  .app-container { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    height: auto;
+  }
+}

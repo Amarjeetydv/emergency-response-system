@@ -1,0 +1,120 @@
+<div class="admin-panel">
+  <nav class="tabs">
+    <button type="button" [class.active]="tab === 'emergencies'" (click)="setTab('emergencies')">
+      Emergencies
+    </button>
+    <button type="button" [class.active]="tab === 'users'" (click)="setTab('users')">Users</button>
+    <button type="button" [class.active]="tab === 'logs'" (click)="setTab('logs')">Logs</button>
+    <button type="button" [class.active]="tab === 'track'" (click)="setTab('track')">
+      Responders (live)
+    </button>
+  </nav>
+
+  <section *ngIf="tab === 'emergencies'" class="panel-section">
+    <h2>All emergencies</h2>
+    <p class="muted">Live updates via Socket.io when statuses change.</p>
+    <table *ngIf="emergencies.length > 0" class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Citizen</th>
+          <th>Status</th>
+          <th>Responder</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let e of emergencies">
+          <td>{{ e.id }}</td>
+          <td>{{ e.emergency_type }}</td>
+          <td>{{ e.citizen_name }}</td>
+          <td>{{ formatStatus(e.status) }}</td>
+          <td>{{ e.responder_name || '—' }}</td>
+          <td>{{ e.created_at | date:'short' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="emergencies.length === 0" class="muted">No records.</p>
+  </section>
+
+  <section *ngIf="tab === 'users'" class="panel-section">
+    <h2>User management</h2>
+    <ng-container *ngIf="users && users.length > 0; else noUsers">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Approval</th>
+            <th>Change role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{ user.name }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.approval_status || '—' }}</td>
+            <td>
+              <select [value]="user.role" (change)="onRoleChange(user.id, $event)">
+                <option value="citizen">Citizen</option>
+                <option value="police">Police</option>
+                <option value="fire">Fire</option>
+                <option value="ambulance">Ambulance</option>
+                <option value="responder">Responder</option>
+                <option value="dispatcher">Dispatcher</option>
+                <option value="admin">Admin</option>
+              </select>
+            </td>
+            <td>
+              <button
+                type="button"
+                *ngIf="['police','fire','ambulance'].includes(user.role) && user.approval_status === 'pending'"
+                (click)="onApprove(user.id)">
+                Approve
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </ng-container>
+    <ng-template #noUsers>
+      <p class="muted">No users loaded.</p>
+    </ng-template>
+  </section>
+
+  <section *ngIf="tab === 'logs'" class="panel-section">
+    <h2>Audit log</h2>
+    <button type="button" class="secondary" (click)="refreshData()">Refresh</button>
+    <table *ngIf="logs.length > 0" class="data-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Emergency</th>
+          <th>Status note</th>
+          <th>By</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let log of logs">
+          <td>{{ log.timestamp | date:'medium' }}</td>
+          <td>#{{ log.emergency_id }} ({{ log.emergency_type }})</td>
+          <td>{{ log.status }}</td>
+          <td>{{ log.updater_name }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p *ngIf="logs.length === 0" class="muted">No log entries.</p>
+  </section>
+
+  <section *ngIf="tab === 'track'" class="panel-section">
+    <h2>Responder tracking</h2>
+    <p class="muted">
+      Positions appear when responders enable &quot;Share my GPS&quot; on their dashboard.
+    </p>
+    <div id="admin-responder-map" class="map-host"></div>
+  </section>
+</div>

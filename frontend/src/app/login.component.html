@@ -1,0 +1,29 @@
+<div class="auth-card">
+  <h2>Welcome Back</h2>
+  <p class="subtitle">Please login to your account</p>
+
+  <div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
+
+  <form (ngSubmit)="onLogin(loginForm)" #loginForm="ngForm" novalidate>
+    <label>Email Address</label>
+    <input type="email" name="email" [(ngModel)]="credentials.email" #email="ngModel" required email placeholder="name@example.com">
+    <div *ngIf="email.invalid && (email.dirty || email.touched)" class="error-text">
+      <small *ngIf="email.errors?.['required']">Email is required</small>
+      <small *ngIf="email.errors?.['email']">Enter a valid email address</small>
+    </div>
+
+    <label>Password</label>
+    <input type="password" name="password" [(ngModel)]="credentials.password" #pass="ngModel" required minlength="6" placeholder="••••••••">
+    <div *ngIf="pass.invalid && (pass.dirty || pass.touched)" class="error-text">
+      <small *ngIf="pass.errors?.['required']">Password is required</small>
+      <small *ngIf="pass.errors?.['minlength']">Minimum 6 characters required</small>
+    </div>
+
+    <button type="submit" [disabled]="!loginForm.form.valid || isSubmitting">
+      <span *ngIf="!isSubmitting">Sign In</span>
+      <span *ngIf="isSubmitting">Authenticating...</span>
+    </button>
+  </form>
+
+  <p class="footer-text">Don't have an account? <a routerLink="/register">Register here</a></p>
+</div>

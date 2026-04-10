@@ -1,0 +1,22 @@
+<div class="dashboard">
+  <header class="dash-header">
+    <h2>Dashboard</h2>
+    <span class="role-badge" *ngIf="role">Role: {{ role }}</span>
+    <button type="button" class="logout" (click)="authService.logout()">Logout</button>
+  </header>
+
+  <app-admin-panel *ngIf="role === 'admin'"></app-admin-panel>
+
+  <app-responder-panel *ngIf="showResponder && role !== 'admin'"></app-responder-panel>
+
+  <div *ngIf="role === 'citizen'" class="citizen-wrap">
+    <app-citizen-panel></app-citizen-panel>
+  </div>
+
+  <div *ngIf="role !== 'citizen' && !showResponder && role !== 'admin'" class="pending-msg">
+    <p *ngIf="['police','fire','ambulance'].includes(role)">
+      Your responder account is pending admin approval. You will get full access once approved.
+    </p>
+    <p *ngIf="!['police','fire','ambulance'].includes(role)">No dashboard is assigned for this role yet.</p>
+  </div>
+</div>
