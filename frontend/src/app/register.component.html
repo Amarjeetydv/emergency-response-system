@@ -1,0 +1,54 @@
+<div class="auth-card">
+  <h2>Create Account</h2>
+  <p class="subtitle">Join the emergency response system</p>
+
+  <div *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</div>
+  <div *ngIf="successMessage" class="success-banner">{{ successMessage }}</div>
+
+  <!-- Hide form on success to focus on the message -->
+  <form *ngIf="!successMessage" (ngSubmit)="registerForm.form.valid && onRegister()" #registerForm="ngForm" novalidate>
+    <label>Full Name</label>
+    <input type="text" name="name" [(ngModel)]="user.name" #nameRef="ngModel" required placeholder="John Doe">
+    <div *ngIf="nameRef.invalid && (nameRef.dirty || nameRef.touched)" class="error-text">
+      <small>Name is required</small>
+    </div>
+
+    <label>Email Address</label>
+    <input type="email" name="email" [(ngModel)]="user.email" #email="ngModel" required email placeholder="name@example.com">
+    <div *ngIf="email.invalid && (email.dirty || email.touched)" class="error-text">
+      <small *ngIf="email.errors?.['required']">Email is required</small>
+      <small *ngIf="email.errors?.['email']">Enter a valid email address</small>
+    </div>
+
+    <label>Password</label>
+    <input type="password" name="password" [(ngModel)]="user.password" #pass="ngModel" required minlength="6" placeholder="••••••••">
+    <div *ngIf="pass.invalid && (pass.dirty || pass.touched)" class="error-text">
+      <small *ngIf="pass.errors?.['required']">Password is required</small>
+      <small *ngIf="pass.errors?.['minlength']">Minimum 6 characters required</small>
+    </div>
+
+    <label>Confirm Password</label>
+    <input type="password" name="confirmPassword" [(ngModel)]="user.confirmPassword" #confirm="ngModel" required placeholder="••••••••">
+    <div *ngIf="user.password !== user.confirmPassword && (confirm.dirty || confirm.touched)" class="error-text">
+      <small>Passwords do not match</small>
+    </div>
+
+      <label>Role</label>
+      <select name="role" [(ngModel)]="user.role" #roleRef="ngModel" required>
+        <option value="citizen">Citizen</option>
+        <option value="police">Police Responder</option>
+        <option value="fire">Fire Responder</option>
+        <option value="ambulance">Ambulance Responder</option>
+      </select>
+      <div *ngIf="roleRef.invalid && (roleRef.dirty || roleRef.touched)" class="error-text">
+        <small>Role is required</small>
+      </div>
+
+    <button type="submit" [disabled]="!registerForm.form.valid || isSubmitting || user.password !== user.confirmPassword">
+      <span *ngIf="!isSubmitting">Register</span>
+      <span *ngIf="isSubmitting">Creating account...</span>
+    </button>
+  </form>
+
+  <p class="footer-text">Already have an account? <a routerLink="/login">Login here</a></p>
+</div>

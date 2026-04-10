@@ -1,0 +1,29 @@
+:root {
+  --primary: #007bff; /* Blue */
+  --primary-dark: #0056b3;
+  --secondary: #6c757d; /* Gray */
+  --success: #28a745; /* Green */
+  --danger: #dc3545; /* Red */
+  --warning: #ffc107; /* Yellow/Orange */
+  --info: #17a2b8; /* Cyan */
+  --background-light: #ffffff;
+  --background-dark: #f8f9fa;
+  --text-color: #343a40;
+  --border-color: #e9ecef;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+.card {
+  background-color: var(--background-light);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  border: 1px solid var(--border-color);
+}
+
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white */
+  backdrop-filter: blur(10px); /* Frosted glass effect */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}

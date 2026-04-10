@@ -1,0 +1,89 @@
+.admin-panel {
+  background: #1e1e2e;
+  color: #e8e8ef;
+  border-radius: 12px;
+  padding: 1rem 1.25rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+
+  button {
+    background: #2a2a3d;
+    color: #e8e8ef;
+    border: 1px solid #3d3d55;
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &.active {
+      background: #4a7bff;
+      border-color: #4a7bff;
+      color: #fff;
+    }
+
+    &:hover:not(.active) {
+      background: #353548;
+    }
+  }
+}
+
+.panel-section {
+  h2 {
+    margin-top: 0;
+    font-size: 1.15rem;
+  }
+}
+
+.muted {
+  color: #9b9bb0;
+  font-size: 0.9rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+
+  th,
+  td {
+    border-bottom: 1px solid #3d3d55;
+    padding: 0.5rem 0.4rem;
+    text-align: left;
+  }
+
+  th {
+    color: #b8b8d0;
+    font-weight: 600;
+  }
+}
+
+select {
+  background: #2a2a3d;
+  color: #e8e8ef;
+  border: 1px solid #3d3d55;
+  border-radius: 6px;
+  padding: 0.25rem 0.35rem;
+}
+
+button.secondary {
+  margin-bottom: 0.75rem;
+  background: #2a2a3d;
+  color: #e8e8ef;
+  border: 1px solid #3d3d55;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.map-host {
+  height: 380px;
+  border-radius: 10px;
+  margin-top: 0.75rem;
+  border: 1px solid #3d3d55;
+}

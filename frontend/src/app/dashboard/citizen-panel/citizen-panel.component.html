@@ -1,0 +1,30 @@
+<div class="citizen-panel">
+  <section class="report-section">
+    <app-emergency-request [embedMode]="true" (submitted)="refresh()"></app-emergency-request>
+  </section>
+
+  <section class="list-section">
+    <h3>Your requests</h3>
+    <p class="hint">Statuses update live: Pending → Accepted → In progress → Completed.</p>
+    <div *ngIf="emergencies.length === 0" class="empty">No requests yet.</div>
+    <ul class="request-list">
+      <li *ngFor="let e of emergencies" class="request-card">
+        <div class="row">
+          <span class="type">{{ e.emergency_type }}</span>
+          <span class="status" [attr.data-status]="e.status">{{ e.status }}</span>
+        </div>
+        <div class="meta">
+          {{ e.latitude | number:'1.4-4' }}, {{ e.longitude | number:'1.4-4' }}
+          <span *ngIf="e.responder_name"> · Responder: {{ e.responder_name }}</span>
+        </div>
+        <button
+          type="button"
+          class="cancel-btn"
+          *ngIf="['pending','accepted','in_progress'].includes(e.status)"
+          (click)="cancel(e.id)">
+          Cancel request
+        </button>
+      </li>
+    </ul>
+  </section>
+</div>

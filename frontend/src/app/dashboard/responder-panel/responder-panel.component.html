@@ -1,0 +1,42 @@
+<div class="responder-panel">
+  <div class="panel-header">
+    <h3>Active Emergency Requests</h3>
+    <button (click)="toggleSharing()" [class.active]="trackLocation" class="btn-track">
+      {{ trackLocation ? '🛑 Stop Global Tracking' : '📍 Enable Live Tracking' }}
+    </button>
+  </div>
+
+  <div class="emergency-list">
+    <div *ngFor="let e of emergencies; trackBy: trackById" class="emergency-card" [class.assigned-to-me]="isAssigned(e)">
+      <div class="card-info">
+        <strong>#{{ e.id }} - {{ e.emergency_type | uppercase }}</strong>
+        <p>{{ e.latitude }}, {{ e.longitude }}</p>
+        <div class="status-badge" [attr.data-status]="e.status">{{ formatStatus(e.status) }}</div>
+      </div>
+
+      <div class="card-actions">
+        <!-- SHOW ACCEPT BUTTON ONLY FOR PENDING -->
+        <div *ngIf="canAccept(e)" class="accept-workflow">
+          <div class="consent-box">
+            <input type="checkbox" [id]="'share-' + e.id" [(ngModel)]="consentMap[e.id]">
+            <label [for]="'share-' + e.id">Share location for this dispatch</label>
+          </div>
+          <button (click)="accept(e)" class="btn-accept" [disabled]="!consentMap[e.id] || processingMap[e.id]">
+            {{ processingMap[e.id] ? '⌛ Processing...' : '🚨 Accept Request' }}
+          </button>
+        </div>
+
+        <!-- SHOW "ACCEPTED" FEEDBACK -->
+        <button *ngIf="e.status === 'accepted' && isAssigned(e)" class="btn-feedback accepted" disabled>
+          ✅ Accepted
+        </button>
+
+        <!-- SUBSEQUENT ACTIONS -->
+        <button *ngIf="canStart(e)" (click)="startProgress(e)" class="btn-action">🚀 Start Progress</button>
+        <button *ngIf="canComplete(e)" (click)="complete(e)" class="btn-action success">🏁 Complete</button>
+        
+        <p *ngIf="e.status !== 'pending' && !isAssigned(e)" class="other-assigned">Assigned to another responder</p>
+      </div>
+    </div>
+  </div>
+</div>
