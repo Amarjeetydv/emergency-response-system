@@ -60,27 +60,17 @@ const Emergency = {
     return rows[0];
   },
 
-  update: async (id, status, responderId) => {
-    let sql = 'UPDATE emergencies SET';
-    const params = [];
-    const updates = [];
-
-    if (status) {
-      updates.push('status = ?');
-      params.push(status);
-    }
-    if (responderId) {
-      updates.push('assigned_responder = ?');
-      params.push(responderId);
-    }
-
-    if (updates.length === 0) {
-      return 0; // No updates to perform
-    }
-
-    sql += ' ' + updates.join(', ') + ' WHERE id = ?';
-    params.push(id);
-
+  update: async (status, responderId, responderLat, responderLng, id) => {
+    const sql = `
+      UPDATE emergencies 
+      SET status = ?, 
+          assigned_responder = ?, 
+          responder_lat = ?, 
+          responder_lng = ? 
+      WHERE id = ?
+    `;
+    // Sanitize parameters: Ensure status is a lowercase string and coordinates are numbers or null
+    const params = [String(status).trim().toLowerCase().replace(/[^a-z_]/g, ''), responderId, responderLat ?? null, responderLng ?? null, id];
     const [result] = await db.execute(sql, params);
     return result.affectedRows;
   }
