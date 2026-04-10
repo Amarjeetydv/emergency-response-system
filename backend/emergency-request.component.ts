@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import * as L from 'leaflet';
 import { EmergencyService } from './emergency.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
+declare var mappls: any;
 
 @Component({
   selector: 'app-emergency-request',
@@ -12,8 +13,8 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./emergency-request.component.scss']
 })
 export class EmergencyRequestComponent implements OnInit {
-  map!: L.Map;
-  private activeMarker?: L.Marker;
+  map: any;
+  private activeMarker?: any;
   emergencyType: string = 'Medical';
   // Initialize with null to satisfy strict null checks
   lat: number | null = null;
@@ -27,50 +28,38 @@ export class EmergencyRequestComponent implements OnInit {
   }
 
   initMap() {
-    // Fix for Leaflet default marker icons in Angular
-    const iconDefault = L.icon({
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-      iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      tooltipAnchor: [16, -28],
-      shadowSize: [41, 41]
-    });
-    L.Marker.prototype.options.icon = iconDefault;
-
-    // Initialize map
-    this.map = L.map('map', {
+    this.map = new mappls.Map('map', {
       center: [0, 0],
-      zoom: 2
+      zoom: 2,
+      hybrid: true
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        this.lat = pos.coords.latitude;
+        this.lng = pos.coords.longitude;
+        this.map.setCenter([this.lat, this.lng]);
+        this.updateMarker({ lat: this.lat, lng: this.lng }, "You are here");
+      });
+    }
 
-    this.map.locate({ setView: true, maxZoom: 16 });
-
-    // Use explicit type L.LocationEvent for better type safety
-    this.map.on('locationfound', (e: L.LocationEvent) => {
-      this.lat = e.latlng.lat;
-      this.lng = e.latlng.lng;
-      this.updateMarker(e.latlng, "You are here");
-    });
-
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
-      this.lat = e.latlng.lat;
-      this.lng = e.latlng.lng;
-      this.updateMarker(e.latlng);
+    this.map.addListener('click', (e: any) => {
+      this.lat = e.lngLat.lat;
+      this.lng = e.lngLat.lng;
+      this.updateMarker({ lat: this.lat, lng: this.lng });
     });
   }
 
-  private updateMarker(latlng: L.LatLngExpression, popupText?: string) {
-    if (this.activeMarker) {
-      this.map.removeLayer(this.activeMarker);
-    }
-    this.activeMarker = L.marker(latlng).addTo(this.map);
-    if (popupText) {
-      this.activeMarker.bindPopup(popupText).openPopup();
+  private updateMarker(latlng: {lat: number, lng: number}, popupText?: string) {
+    if (!this.activeMarker) {
+      this.activeMarker = new mappls.Marker({
+        map: this.map,
+        position: latlng,
+        popupHtml: popupText,
+        draggable: true
+      });
+    } else {
+      this.activeMarker.setPosition(latlng);
     }
   }
 
