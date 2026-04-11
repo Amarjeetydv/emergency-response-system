@@ -36,7 +36,7 @@ CREATE TABLE `emergencies` (
   `emergency_type` varchar(255) NOT NULL,
   `latitude` decimal(10,8) NOT NULL,
   `longitude` decimal(11,8) NOT NULL,
-  `status` enum('pending','accepted','in_progress','completed','cancelled') NOT NULL DEFAULT 'pending',
+  `status` enum('pending','accepted','in_progress','completed','cancelled','escalated') NOT NULL DEFAULT 'pending',
   `assigned_responder` int DEFAULT NULL,
   `responder_lat` decimal(10,8) DEFAULT NULL,
   `responder_lng` decimal(11,8) DEFAULT NULL,
@@ -58,6 +58,16 @@ CREATE TABLE IF NOT EXISTS logs (
     FOREIGN KEY (updated_by) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    emergency_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    message TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (emergency_id) REFERENCES emergencies(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 
 UPDATE users SET role = 'admin' WHERE email = 'adminuser@example.com';
 ALTER TABLE users ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected') DEFAULT NULL;
@@ -65,3 +75,5 @@ ALTER TABLE users ADD COLUMN approval_status ENUM('pending', 'approved', 'reject
 -- Run these commands to fix the "Unknown column" error in your existing database
 ALTER TABLE emergencies ADD COLUMN responder_lat DECIMAL(10,8) DEFAULT NULL AFTER assigned_responder;
 ALTER TABLE emergencies ADD COLUMN responder_lng DECIMAL(11,8) DEFAULT NULL AFTER responder_lat;
+ALTER TABLE emergencies MODIFY COLUMN status ENUM('pending','accepted','in_progress','completed','cancelled','escalated') NOT NULL DEFAULT 'pending';
+ALTER TABLE users ADD COLUMN fcm_token TEXT DEFAULT NULL;

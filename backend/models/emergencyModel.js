@@ -73,6 +73,39 @@ const Emergency = {
     const params = [String(status).trim().toLowerCase().replace(/[^a-z_]/g, ''), responderId, responderLat ?? null, responderLng ?? null, id];
     const [result] = await db.execute(sql, params);
     return result.affectedRows;
+  },
+
+  claim: async (id, responderId, lat, lng) => {
+    const sql = `
+      UPDATE emergencies 
+      SET status = 'accepted', 
+          assigned_responder = ?, 
+          responder_lat = ?, 
+          responder_lng = ? 
+      WHERE id = ? AND status IN ('pending', 'escalated')
+    `;
+    const [result] = await db.execute(sql, [responderId, lat, lng, id]);
+    return result.affectedRows;
+  },
+
+  escalate: async (id) => {
+    const sql = `
+      UPDATE emergencies 
+      SET status = 'escalated' 
+      WHERE id = ? AND status = 'pending'
+    `;
+    const [result] = await db.execute(sql, [id]);
+    return result.affectedRows;
+  },
+
+  findStalePending: async (thresholdMinutes = 5) => {
+    const sql = `
+      SELECT id FROM emergencies 
+      WHERE status = 'pending' 
+      AND created_at < NOW() - INTERVAL ? MINUTE
+    `;
+    const [rows] = await db.execute(sql, [thresholdMinutes]);
+    return rows;
   }
 };
 
