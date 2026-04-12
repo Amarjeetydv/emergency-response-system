@@ -9,3 +9,6 @@ dist/
 # Specific to your structure
 frontend/node_modules/
 backend/node_modules/
+
+# Sensitive Configuration
+backend/config/firebase-service-account.json
