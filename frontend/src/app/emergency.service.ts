@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
+import { environment } from '../environments/environment';
 
 export type LiveEvent =
   | { type: 'NEW'; data: any }
@@ -12,17 +13,23 @@ export type LiveEvent =
   providedIn: 'root'
 })
 export class EmergencyService {
-  private apiUrl = 'http://localhost:5000/api/emergencies';
-  private adminUrl = 'http://localhost:5000/api/admin';
+  private apiUrl = `${environment.apiUrl}/emergencies`;
+  private adminUrl = `${environment.apiUrl}/admin`;
   private socket: Socket;
   private updates = new Subject<LiveEvent>();
 
   constructor(private http: HttpClient) {
+    this.initSocket();
+  }
+
+  private initSocket(): void {
     const token = this.getToken();
-    this.socket = io('http://localhost:5000', {
+    const serverUrl = environment.apiUrl ? environment.apiUrl.replace('/api', '') : 'http://localhost:5000';
+    
+    this.socket = io(serverUrl, {
       auth: { token },
       reconnection: true,
-      reconnectionAttempts: Infinity, // Keep trying
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000
     });
@@ -36,14 +43,12 @@ export class EmergencyService {
     return this.updates.asObservable();
   }
 
-  /** Call when user logs in so the socket uses a fresh token (optional reconnect). */
+  /** Call when user logs in so the socket uses a fresh token. */
   reconnectSocket(): void {
-    this.socket.disconnect();
-    const token = this.getToken();
-    this.socket = io('http://localhost:5000', { auth: { token } });
-    this.socket.on('newEmergency', (data) => this.updates.next({ type: 'NEW', data }));
-    this.socket.on('emergencyUpdate', (data) => this.updates.next({ type: 'STATUS', data }));
-    this.socket.on('responderLocationUpdate', (data) => this.updates.next({ type: 'LOCATION', data }));
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+    this.initSocket();
   }
 
   emitResponderLocation(payload: { responderId: number; latitude: number; longitude: number }): void {
@@ -89,7 +94,7 @@ export class EmergencyService {
   }
 
   updateStatus(id: number, body: { status: string; responder_id?: number }): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}/status`, body, { headers: this.getHeaders() });
+    return this.http.put(`${this.apiUrl}/${id}`, body, { headers: this.getHeaders() });
   }
 
   getLogs(): Observable<any[]> {

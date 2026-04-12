@@ -111,9 +111,7 @@ export class ResponderDashboardComponent implements OnInit {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        const token = await getToken(messaging, { 
-          vapidKey: environment.vapidKey 
-        });
+        const token = await getToken(messaging, { vapidKey: environment.vapidKey });
         
         if (token) {
           this.emergencyService.updateDeviceToken(token).subscribe();

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -13,12 +14,12 @@ export class UserService {
   }
 
   getUsers(): Observable<any[]> {
-    return this.http.get<any[]>('http://localhost:5000/api/auth/users', { headers: this.headers() });
+    return this.http.get<any[]>(`${environment.apiUrl}/auth/users`, { headers: this.headers() });
   }
 
   approveResponder(userId: number): Observable<any> {
     return this.http.patch(
-      `http://localhost:5000/api/auth/users/${userId}/approve`,
+      `${environment.apiUrl}/auth/users/${userId}/approve`,
       {},
       { headers: this.headers() }
     );
@@ -26,7 +27,7 @@ export class UserService {
 
   updateUserRole(userId: number, newRole: string): Observable<any> {
     return this.http.patch(
-      `http://localhost:5000/api/auth/users/${userId}/role`,
+      `${environment.apiUrl}/auth/users/${userId}/role`,
       { role: newRole },
       { headers: this.headers() }
     );
