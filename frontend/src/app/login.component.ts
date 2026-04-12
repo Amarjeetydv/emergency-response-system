@@ -4,7 +4,6 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { EmergencyService } from './emergency.service';
-import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -33,7 +32,7 @@ export class LoginComponent {
     this.isSubmitting = true;
     this.errorMessage = '';
 
-    this.http.post<any>(`${environment.apiUrl}/auth/login`, this.credentials).subscribe({
+    this.http.post<any>('http://localhost:5000/api/auth/login', this.credentials).subscribe({
       next: (user) => {
         this.isSubmitting = false;
         localStorage.setItem('user', JSON.stringify(user));
