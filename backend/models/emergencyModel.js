@@ -29,6 +29,20 @@ const Emergency = {
     return rows;
   },
 
+  findNearby: async (lat, lng, radiusKm) => {
+    const sql = `
+      SELECT e.*, u.name as citizen_name, r.name as responder_name,
+      ST_Distance_Sphere(point(e.longitude, e.latitude), point(?, ?)) / 1000 AS distance
+      FROM emergencies e
+      JOIN users u ON e.citizen_id = u.id
+      LEFT JOIN users r ON e.assigned_responder = r.id
+      HAVING distance <= ?
+      ORDER BY distance ASC
+    `;
+    const [rows] = await db.execute(sql, [lng, lat, radiusKm]);
+    return rows;
+  },
+
   findByCitizenId: async (citizenId) => {
     const sql = `
       SELECT e.*, u.name as citizen_name, r.name as responder_name

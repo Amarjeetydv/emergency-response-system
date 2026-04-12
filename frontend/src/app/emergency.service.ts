@@ -20,7 +20,11 @@ export class EmergencyService {
   constructor(private http: HttpClient) {
     const token = this.getToken();
     this.socket = io('http://localhost:5000', {
-      auth: { token }
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity, // Keep trying
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
     });
 
     this.socket.on('newEmergency', (data) => this.updates.next({ type: 'NEW', data }));
