@@ -189,11 +189,7 @@ const getAllEmergencies = async (req, res) => {
 // @route   POST /api/emergencies/accept-request
 const acceptRequest = async (req, res) => {
   const { request_id, responder_lat, responder_lng } = req.body;
-  const responder_id = req.user.id; // Correct: Use the ID from the authenticated token
-
-  if (!request_id || !responder_lat || !responder_lng) {
-    return res.status(400).json({ message: 'Missing required location data' });
-  }
+  const responder_id = req.user.id;
 
   try {
     // Atomic update: only update if status is still pending
@@ -235,9 +231,8 @@ const getChatHistory = async (req, res) => {
 // @desc    Update emergency status
 // @route   PUT /api/emergencies/:id
 const updateStatus = async (req, res) => {
-  const { status, responder_lat, responder_lng } = req.body;
+  const { status, responder_id, responder_lat, responder_lng } = req.body;
   const emergencyId = Number(req.params.id);
-  const responder_id = req.user.id; // Use secure ID from JWT
 
   if (!status || !ALLOWED_STATUSES.includes(status)) {
     return res.status(400).json({ message: 'Valid status is required' });
