@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EmergencyService } from './emergency.service';
 import { AuthService } from './auth.service'; // Assuming AuthService exists
-import { environment } from '../environments/environment';
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 @Component({
@@ -112,7 +111,7 @@ export class ResponderDashboardComponent implements OnInit {
       
       if (permission === 'granted') {
         const token = await getToken(messaging, { 
-          vapidKey: environment.vapidKey 
+          vapidKey: 'YOUR_PUBLIC_VAPID_KEY_FROM_FIREBASE' 
         });
         
         if (token) {
