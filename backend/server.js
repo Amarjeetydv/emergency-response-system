@@ -6,6 +6,8 @@ const dotenv = require('dotenv');
 const cron = require('node-cron');
 const db = require('./config/db'); // This will run the connection check
 const admin = require('firebase-admin');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
 
 // Load env vars
 dotenv.config();
@@ -13,10 +15,17 @@ dotenv.config();
 // Initialize Firebase Admin
 // Note: Place your serviceAccountKey.json in the config folder
 try {
-  const serviceAccount = require("./config/firebase-service-account.json");
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  let credential;
+  // Support for environment variable in production (Render/Heroku)
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    credential = admin.credential.cert(sa);
+  } else {
+    const serviceAccount = require("./config/firebase-service-account.json");
+    credential = admin.credential.cert(serviceAccount);
+  }
+
+  admin.initializeApp({ credential });
   console.log('Firebase Admin initialized successfully');
 } catch (error) {
   console.error('Firebase Admin initialization failed. Push notifications will not work.', error.message);
@@ -33,15 +42,47 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // In production, restrict this to your frontend's URL
+    origin: process.env.FRONTEND_URL || "*",
     methods: ["GET", "POST", "PUT"]
   }
 });
+
+// Redis Setup for Horizontal Scaling
+if (process.env.REDIS_URL) {
+  const pubClient = createClient({ 
+    url: process.env.REDIS_URL,
+    socket: {
+      // Reconnect strategy prevents infinite immediate retries if Redis is unavailable locally
+      reconnectStrategy: (retries) => {
+        if (retries > 5) return new Error('Redis connection failed permanently');
+        return Math.min(retries * 200, 2000);
+      }
+    }
+  });
+  const subClient = pubClient.duplicate();
+
+  pubClient.on('error', (err) => console.error('Redis Pub Client Error:', err.message || 'Connection refused'));
+  subClient.on('error', (err) => console.error('Redis Sub Client Error:', err.message || 'Connection refused'));
+
+  Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('Redis Adapter connected');
+  }).catch((err) => {
+    console.error('Redis connection failed. Horizontal scaling with Socket.io will not work.', err.message);
+  });
+} else {
+  console.log('REDIS_URL not set in .env. Skipping Redis Adapter for Socket.io (using default memory adapter).');
+}
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Health Check for Render/Monitoring
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'UP', timestamp: new Date() });
+});
 
 // Make io accessible to our router
 app.set('socketio', io);
@@ -92,3 +133,11 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Graceful shutdown for production
+process.on('SIGTERM', () => {
+  server.close(() => {
+    console.log('Server shut down gracefully');
+    process.exit(0);
+  });
+});
