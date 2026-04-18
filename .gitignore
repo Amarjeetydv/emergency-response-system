@@ -1,11 +1,26 @@
+# Dependencies
 node_modules/
+
+# Environment variables (Keep your keys safe!)
+.env
+.env.local
+.env.*.local
+
+# Firebase / Google Cloud Secrets
+firebase-service-account.json
+serviceAccountKey.json
+
+# Local uploads
+backend/uploads/
+
+# Build output
 dist/
 .angular/
-*.log
-**/.env
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE files
 .vscode/
 .idea/
-
-# Specific to your structure
-frontend/node_modules/
-backend/node_modules/
