@@ -50,13 +50,13 @@ import { Subscription } from 'rxjs';
         <li class="nav-item"><button class="nav-link" [class.active]="activeTab === 'users'" (click)="setActiveTab('users')">👥 User Management</button></li>
       </ul>
 
-      <div [hidden]="activeTab !== 'map'">
+      <div [hidden]="activeTab !== 'map'" class="map-container-wrapper">
         <div class="mb-2">
           <button class="btn btn-sm" [ngClass]="showHeatmap ? 'btn-dark' : 'btn-outline-dark'" (click)="toggleHeatmap()">
             {{ showHeatmap ? '🔥 Hide Heatmap' : '🔥 Show Heatmap' }}
           </button>
         </div>
-        <div id="adminMap" style="height: 600px; border-radius: 12px; width: 100%;"></div>
+        <div id="adminMap" class="full-width-map"></div>
       </div>
 
       <div *ngIf="activeTab === 'users'">
@@ -214,13 +214,11 @@ import { Subscription } from 'rxjs';
       padding: 1.5rem; 
       background: #f4f7f9; 
       min-height: 100vh; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
       width: 100%;
     }
-    .stats-grid, .nav-tabs, .toolbar, .table-responsive { width: 100%; display: block; }
-    [hidden] { display: none !important; }
+    .stats-grid, .nav-tabs, .toolbar, .table-responsive, .map-container-wrapper { width: 100%; display: block; }
+    .full-width-map { height: 750px; border-radius: 12px; width: 100% !important; }
+    
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
     .stat-card { background: #fff; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
     .stat-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-right: 1rem; }
@@ -269,14 +267,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }));
   }
 
-  setActiveTab(tab: 'map' | 'users' | 'incidents') {
-    this.activeTab = tab;
-    if (tab === 'map' && this.map) {
-      // Leaflet needs to re-calculate its size when the container becomes visible
-      setTimeout(() => this.map.invalidateSize(), 100);
-    }
-  }
-
   filteredUsers() {
     return this.users.filter(u => {
       const matchesSearch = u.name.toLowerCase().includes(this.userSearchTerm.toLowerCase()) || 
@@ -321,7 +311,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   deleteUser(id: number, name: string) {
     if (confirm(`Are you sure you want to delete user '${name}'? This cannot be undone.`)) {
       this.emergencyService.deleteUser(id).subscribe({
-        next: () => this.loadData(),
+        next: () => {
+          this.loadData();
+          alert('User deleted successfully.');
+        },
         error: (err: any) => {
           const detail = err?.error?.details || err?.error?.message || err.message || err;
           alert('Failed to delete user: ' + detail);
@@ -343,11 +336,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   initMap() {
     this.map = L.map('adminMap').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-    
-    // If we already have incidents, center the map on the first one
-    if (this.incidents.length > 0) {
-      this.map.setView([this.incidents[0].latitude, this.incidents[0].longitude], 12);
-    }
   }
 
   toggleHeatmap() {
@@ -387,17 +375,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   updateIncidentMarkers(incidents: any[]) {
     incidents.forEach(e => {
       const key = `inc_${e.id}`;
-      const lat = parseFloat(e.latitude);
-      const lng = parseFloat(e.longitude);
-      
-      if (isNaN(lat) || isNaN(lng)) return;
-
       if (this.markers[key]) this.map.removeLayer(this.markers[key]);
       
       const color = e.status === 'escalated' ? 'red' : (e.status === 'pending' ? 'orange' : 'blue');
-      const marker = L.circleMarker([lat, lng], {
+      const marker = L.circleMarker([e.latitude, e.longitude], {
         color, radius: 10, fillOpacity: 0.8
-      }).bindPopup(`<b>${(e.emergency_type || e.type || 'Incident').toUpperCase()}</b><br>Status: ${e.status}<br><small>${e.description || ''}</small>`);
+      }).bindPopup(`<b>${e.emergency_type}</b><br>Status: ${e.status}`);
       
       marker.addTo(this.map);
       this.markers[key] = marker;
@@ -406,21 +389,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   updateResponderMarker(data: any) {
     const key = `res_${data.responderId}`;
-    const lat = parseFloat(data.latitude);
-    const lng = parseFloat(data.longitude);
-
-    if (isNaN(lat) || isNaN(lng)) return;
-
     if (this.markers[key]) this.map.removeLayer(this.markers[key]);
 
     const icon = L.divIcon({
       html: '<div style="font-size: 24px;">🚑</div>',
-      className: 'responder-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
+      className: 'responder-icon'
     });
 
-    const marker = L.marker([lat, lng], { icon })
+    const marker = L.marker([data.latitude, data.longitude], { icon })
       .bindPopup(`Responder ID: ${data.responderId}`)
       .addTo(this.map);
     
