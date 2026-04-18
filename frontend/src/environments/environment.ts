@@ -1,5 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:5000/api',
+  apiUrl: 'https://emergency-response-system-backend.onrender.com/api',
   vapidKey: 'YOUR_DEVELOPMENT_VAPID_KEY'
 };

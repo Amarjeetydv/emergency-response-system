@@ -214,12 +214,9 @@ import { Subscription } from 'rxjs';
       padding: 1.5rem; 
       background: #f4f7f9; 
       min-height: 100vh; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
       width: 100%;
     }
-    .stats-grid, .nav-tabs, .toolbar, .table-responsive { width: 100%; display: block; }
+    .stats-grid, .nav-tabs, .toolbar, .table-responsive, .map-container-wrapper { width: 100%; display: block; }
     [hidden] { display: none !important; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
     .stat-card { background: #fff; padding: 1.5rem; border-radius: 12px; display: flex; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
