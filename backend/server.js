@@ -114,7 +114,11 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`🚀 Server initialized in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`📡 Listening on port ${PORT}`);
+  console.log(`🗄️  Attempting connection to Database Host: ${process.env.DB_HOST || 'Not Set'}`);
+});
 
 // Graceful shutdown for production
 process.on('SIGTERM', () => {
