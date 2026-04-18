@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
+import { environment } from '../environments/environment';
 
 export type LiveEvent =
   | { type: 'NEW'; data: any }
@@ -12,15 +13,27 @@ export type LiveEvent =
   providedIn: 'root'
 })
 export class EmergencyService {
-  private apiUrl = 'http://localhost:5000/api/emergencies';
-  private adminUrl = 'http://localhost:5000/api/admin';
-  private socket: Socket;
+  private apiUrl = environment.apiUrl ? `${environment.apiUrl}/emergencies` : '/api/emergencies';
+  private adminUrl = environment.apiUrl ? `${environment.apiUrl}/admin` : '/api/admin';
+  private authUrl = environment.apiUrl ? `${environment.apiUrl}/auth` : '/api/auth';
+  private socket!: Socket;
   private updates = new Subject<LiveEvent>();
 
   constructor(private http: HttpClient) {
+    this.initSocket();
+  }
+
+  private initSocket(): void {
     const token = this.getToken();
-    this.socket = io('http://localhost:5000', {
-      auth: { token }
+    // Ensure we point to the root of the backend server (port 5000)
+    const serverUrl = 'http://localhost:5000';
+    
+    this.socket = io(serverUrl, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
     });
 
     this.socket.on('newEmergency', (data) => this.updates.next({ type: 'NEW', data }));
@@ -32,14 +45,12 @@ export class EmergencyService {
     return this.updates.asObservable();
   }
 
-  /** Call when user logs in so the socket uses a fresh token (optional reconnect). */
+  /** Call when user logs in so the socket uses a fresh token. */
   reconnectSocket(): void {
-    this.socket.disconnect();
-    const token = this.getToken();
-    this.socket = io('http://localhost:5000', { auth: { token } });
-    this.socket.on('newEmergency', (data) => this.updates.next({ type: 'NEW', data }));
-    this.socket.on('emergencyUpdate', (data) => this.updates.next({ type: 'STATUS', data }));
-    this.socket.on('responderLocationUpdate', (data) => this.updates.next({ type: 'LOCATION', data }));
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+    this.initSocket();
   }
 
   emitResponderLocation(payload: { responderId: number; latitude: number; longitude: number }): void {
@@ -68,8 +79,15 @@ export class EmergencyService {
     return parseFloat(distance.toFixed(2)); // Return distance rounded to 2 decimal places
   }
 
-  createEmergency(data: { emergency_type: string; latitude: number; longitude: number }): Observable<any> {
-    return this.http.post(this.apiUrl, data, { headers: this.getHeaders() });
+  createEmergency(data: any): Observable<any> {
+    const token = this.getToken();
+    const headers = new HttpHeaders(token ? { Authorization: `Bearer ${token}` } : {});
+
+    if (data instanceof FormData) {
+      // Do NOT set Content-Type here, let the browser handle it for FormData
+      return this.http.post(this.apiUrl, data, { headers });
+    }
+    return this.http.post(this.apiUrl, data, { headers });
   }
 
   getEmergencies(): Observable<any[]> {
@@ -85,11 +103,31 @@ export class EmergencyService {
   }
 
   updateStatus(id: number, body: { status: string; responder_id?: number }): Observable<any> {
-    return this.http.put(`${this.apiUrl}/${id}/status`, body, { headers: this.getHeaders() });
+    return this.http.put(`${this.apiUrl}/${id}`, body, { headers: this.getHeaders() });
   }
 
   getLogs(): Observable<any[]> {
     return this.http.get<any[]>(`${this.adminUrl}/logs`, { headers: this.getHeaders() });
+  }
+
+  getAnalytics(): Observable<any> {
+    return this.http.get<any>(`${this.adminUrl}/analytics`, { headers: this.getHeaders() });
+  }
+
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.authUrl}/users`, { headers: this.getHeaders() });
+  }
+
+  approveUser(id: number): Observable<any> {
+    return this.http.patch(`${this.authUrl}/users/${id}/approve`, {}, { headers: this.getHeaders() });
+  }
+
+  updateUserRole(userId: number, role: string): Observable<any> {
+    return this.http.patch(`${this.authUrl}/users/${userId}/role`, { role }, { headers: this.getHeaders() });
+  }
+
+  deleteUser(userId: number): Observable<any> {
+    return this.http.delete(`${this.authUrl}/users/${userId}`, { headers: this.getHeaders() });
   }
 
   updateDeviceToken(token: string): Observable<any> {

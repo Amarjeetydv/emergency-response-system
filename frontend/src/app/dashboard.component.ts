@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './auth.service';
-import { AdminPanelComponent } from './dashboard/admin-panel/admin-panel.component';
+import { AdminDashboardComponent } from './admin-dashboard.component'; // Ensure this points to the new file
 import { ResponderPanelComponent } from './dashboard/responder-panel/responder-panel.component';
 import { CitizenPanelComponent } from './dashboard/citizen-panel/citizen-panel.component';
 
@@ -18,48 +18,42 @@ function canUseResponderDashboard(user: any): boolean {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, AdminPanelComponent, ResponderPanelComponent, CitizenPanelComponent],
+  imports: [CommonModule, AdminDashboardComponent, ResponderPanelComponent, CitizenPanelComponent],
   template: `
-    <div class="app-container">
+    <div class="app-wrapper" [class.sidebar-collapsed]="isCollapsed">
       <!-- Sidebar Navigation -->
-      <aside class="sidebar">
-        <div class="brand">
-          <span class="icon">🚨</span>
-          <span class="logo-text">ERCS Control</span>
+      <aside class="side-nav">
+        <div class="nav-brand">
+          <span class="brand-icon">⚡</span>
+          <span class="brand-text">ERCS Pro</span>
         </div>
         
-        <nav class="nav-links">
-          <a class="nav-item active">
-            <span class="nav-icon">📊</span> Dashboard
-          </a>
-          <a class="nav-item" *ngIf="role === 'admin'">
-            <span class="nav-icon">👥</span> Users
-          </a>
-          <a class="nav-item" [class.active]="role === 'citizen'">
-            <span class="nav-icon">👤</span> Profile
-          </a>
-        </nav>
+        <div class="nav-menu">
+          <div class="menu-label">Main Menu</div>
+          <a class="menu-item active">📊 Dashboard</a>
+          <a class="menu-item" *ngIf="role === 'admin'">🛡️ Admin Tools</a>
+          <a class="menu-item" [class.active]="role === 'citizen'">📱 My Reports</a>
+        </div>
 
         <div class="user-footer">
-          <div class="user-info">
-            <p class="name">Logged in as:</p>
-            <p class="user-display-name">{{ (authService.getUser())?.name }}</p>
-          </div>
-          <button (click)="authService.logout()" class="logout-btn">Logout</button>
+          <button (click)="authService.logout()" class="btn-logout">
+            <span class="logout-icon">🚪</span>
+            <span class="logout-text">Sign Out</span>
+          </button>
         </div>
       </aside>
 
-      <!-- Main Dashboard Area -->
-      <main class="main-content">
-        <header class="top-bar card glass-panel">
-          <h1>System Overview</h1>
-          <div class="live-indicator">
-            <span class="dot"></span> Live System Active
+      <div class="content-area">
+        <nav class="top-navbar">
+          <button class="toggle-btn" (click)="isCollapsed = !isCollapsed">☰</button>
+          <div class="top-meta">
+            <span class="badge bg-light text-dark me-2">{{ role | uppercase }}</span>
+            <strong>{{ (authService.getUser())?.name }}</strong>
           </div>
-        </header>
+        </nav>
 
-        <div class="dashboard-content">
-          <app-admin-panel *ngIf="role === 'admin'"></app-admin-panel>
+        <div class="p-4">
+          <app-admin-dashboard *ngIf="role === 'admin'"></app-admin-dashboard>
           
           <app-responder-panel *ngIf="showResponder && role !== 'admin'"></app-responder-panel>
           
@@ -72,14 +66,39 @@ function canUseResponderDashboard(user: any): boolean {
             <div class="badge pending">Pending Approval</div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   `,
-  styleUrl: './dashboard.component.scss'
+  styles: [`
+    .app-wrapper { display: flex; min-height: 100vh; background: #f8fafc; }
+    .side-nav { width: 260px; background: #1e293b; color: #f8fafc; display: flex; flex-direction: column; transition: width 0.3s; }
+    .nav-brand { padding: 1.5rem; display: flex; align-items: center; background: rgba(0,0,0,0.1); }
+    .brand-icon { font-size: 1.5rem; margin-right: 0.75rem; }
+    .brand-text { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.5px; }
+    .nav-menu { padding: 1.5rem; flex: 1; }
+    .menu-label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem; }
+    .menu-item { display: block; padding: 0.75rem 1rem; color: #cbd5e1; text-decoration: none; border-radius: 8px; margin-bottom: 0.5rem; transition: all 0.2s; }
+    .menu-item:hover, .menu-item.active { background: #334155; color: #fff; }
+    .user-footer { padding: 1rem; border-top: 1px solid #334155; }
+    .btn-logout { width: 100%; padding: 0.75rem; background: #ef4444; border: none; color: white; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .content-area { flex: 1; display: flex; flex-direction: column; }
+    .top-navbar { height: 64px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; }
+    .toggle-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
+    
+    /* Responsive Logic */
+    .sidebar-collapsed .side-nav { width: 0; overflow: hidden; }
+    .sidebar-collapsed .brand-text, .sidebar-collapsed .logout-text { display: none; }
+    @media (max-width: 768px) {
+      .side-nav { position: fixed; height: 100%; z-index: 1000; left: -260px; }
+      .app-wrapper:not(.sidebar-collapsed) .side-nav { left: 0; }
+      .sidebar-collapsed .side-nav { left: -260px; }
+    }
+  `]
 })
 export class DashboardComponent implements OnInit {
   role = '';
   showResponder = false;
+  isCollapsed = false;
 
   constructor(public authService: AuthService) {}
 

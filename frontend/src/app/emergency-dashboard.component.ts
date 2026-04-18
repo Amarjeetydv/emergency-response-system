@@ -76,8 +76,8 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
         </div>
       </div>
     </div>
-  `,
-  styles: [`
+  `
+  , styles: [`
     .thumbnail-wrapper {
       max-height: 150px;
       overflow: hidden;
@@ -110,6 +110,7 @@ export class ResponderDashboardComponent implements OnInit {
 
     // Real-time: Listen for updates
     this.emergencyService.getLiveUpdates().subscribe(ev => {
+      console.log('Live update received in dashboard:', ev);
       if (ev.type === 'NEW') {
         this.loadNearbyEmergencies();
       }
@@ -132,12 +133,12 @@ export class ResponderDashboardComponent implements OnInit {
 
   isImage(url: string): boolean {
     if (!url) return false;
-    return /\.(jpg|jpeg|png|webp|avif|gif)(\?.*)?$/i.test(url);
+    return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(url);
   }
 
   isVideo(url: string): boolean {
     if (!url) return false;
-    return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url);
+    return /\.(mp4|webm|ogg|mov)$/i.test(url);
   }
 
   async setupNotifications() {

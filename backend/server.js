@@ -1,35 +1,16 @@
 const express = require('express');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
 const db = require('./config/db'); // This will run the connection check
-const admin = require('firebase-admin');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { createClient } = require('redis');
 
 // Load env vars
 dotenv.config();
-
-// Initialize Firebase Admin
-// Note: Place your serviceAccountKey.json in the config folder
-try {
-  let credential;
-  // Support for environment variable in production (Render/Heroku)
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    credential = admin.credential.cert(sa);
-  } else {
-    const serviceAccount = require("./config/firebase-service-account.json");
-    credential = admin.credential.cert(serviceAccount);
-  }
-
-  admin.initializeApp({ credential });
-  console.log('Firebase Admin initialized successfully');
-} catch (error) {
-  console.error('Firebase Admin initialization failed. Push notifications will not work.', error.message);
-}
 
 // Route files
 const authRoutes = require('./routes/authRoutes');
@@ -78,6 +59,7 @@ if (process.env.REDIS_URL) {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health Check for Render/Monitoring
 app.get('/health', (req, res) => {

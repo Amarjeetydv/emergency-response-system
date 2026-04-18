@@ -2,12 +2,12 @@ const db = require('../config/db');
 
 const User = {
   findByEmail: async (email) => {
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
     return rows[0];
   },
 
   findById: async (id) => {
-    const [rows] = await db.query(
+    const [rows] = await db.execute(
       'SELECT id, name, email, role, phone, approval_status FROM users WHERE id = ?',
       [id]
     );
@@ -30,7 +30,7 @@ const User = {
 
   // Get all users
   getAll: async () => {
-    const [rows] = await db.query('SELECT id, name, email, role, phone, approval_status FROM users');
+    const [rows] = await db.execute('SELECT id, name, email, role, phone, approval_status FROM users');
     return rows;
   },
 
@@ -41,6 +41,11 @@ const User = {
 
   updateRole: async (id, role) => {
     const [result] = await db.execute('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+    return result.affectedRows;
+  },
+
+  delete: async (id) => {
+    const [result] = await db.execute('DELETE FROM users WHERE id = ?', [id]);
     return result.affectedRows;
   }
 };

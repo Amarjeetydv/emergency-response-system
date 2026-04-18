@@ -151,10 +151,36 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+const deleteUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent admins from deleting themselves via this endpoint if desired
+    if (req.user.id === parseInt(id)) {
+      return res.status(400).json({ message: 'Cannot delete your own admin account' });
+    }
+
+    await User.delete(id); 
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('deleteUser Error:', error); // Logs full error details to the server console
+    res.status(500).json({ 
+      message: 'Failed to delete user', 
+      details: error.message,
+      code: error.code 
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getAllUsers,
   approveResponder,
   updateUserRole,
+  deleteUser,
 };

@@ -1,20 +1,5 @@
 CREATE DATABASE ercs;
 
--- CREATE TABLE `users` (
---   `id` int NOT NULL AUTO_INCREMENT,
---   `name` varchar(255) NOT NULL,
---   `email` varchar(255) NOT NULL,
---   `password` varchar(255) NOT NULL,
---   `role` enum('citizen','responder','dispatcher') NOT NULL,
---   `phone` varchar(20) DEFAULT NULL,
---   `latitude` decimal(10,8) DEFAULT NULL,
---   `longitude` decimal(11,8) DEFAULT NULL,
---   `availability` enum('available','unavailable') DEFAULT 'available',
---   PRIMARY KEY (`id`),
---   UNIQUE KEY `email` (`email`)
--- ) ENGINE=InnoDB;
-
-
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -37,6 +22,8 @@ CREATE TABLE `emergencies` (
   `latitude` decimal(10,8) NOT NULL,
   `longitude` decimal(11,8) NOT NULL,
   `status` enum('pending','accepted','in_progress','completed','cancelled','escalated') NOT NULL DEFAULT 'pending',
+  `description` text DEFAULT NULL,
+  `media_url` varchar(255) DEFAULT NULL,
   `assigned_responder` int DEFAULT NULL,
   `responder_lat` decimal(10,8) DEFAULT NULL,
   `responder_lng` decimal(11,8) DEFAULT NULL,
@@ -52,10 +39,10 @@ CREATE TABLE IF NOT EXISTS logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     emergency_id INT NOT NULL,
     status VARCHAR(50) NOT NULL,
-    updated_by INT NOT NULL,
+    updated_by INT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (emergency_id) REFERENCES emergencies(id) ON DELETE CASCADE,
-    FOREIGN KEY (updated_by) REFERENCES users(id)
+    CONSTRAINT fk_logs_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -69,11 +56,23 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 
-UPDATE users SET role = 'admin' WHERE email = 'adminuser@example.com';
+UPDATE users SET role = 'admin' WHERE email = 'admin@gmail.com';
 ALTER TABLE users ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected') DEFAULT NULL;
 
 -- Run these commands to fix the "Unknown column" error in your existing database
 ALTER TABLE emergencies ADD COLUMN responder_lat DECIMAL(10,8) DEFAULT NULL AFTER assigned_responder;
 ALTER TABLE emergencies ADD COLUMN responder_lng DECIMAL(11,8) DEFAULT NULL AFTER responder_lat;
 ALTER TABLE emergencies MODIFY COLUMN status ENUM('pending','accepted','in_progress','completed','cancelled','escalated') NOT NULL DEFAULT 'pending';
-ALTER TABLE users ADD COLUMN fcm_token TEXT DEFAULT NULL;
+ALTER TABLE emergencies ADD COLUMN description TEXT DEFAULT NULL AFTER status;
+ALTER TABLE emergencies ADD COLUMN media_url VARCHAR(255) DEFAULT NULL AFTER description;
+ALTER TABLE logs MODIFY COLUMN updated_by INT NULL;
+
+-- Fix for User Deletion (Foreign Key Constraint Issues):
+-- If you get 'Duplicate foreign key constraint name', it means the name is already taken.
+-- If you get 'Can't DROP; check that column/key exists', the name provided is incorrect.
+-- 
+-- 1. Run this to find the ACTUAL constraint name: SHOW CREATE TABLE logs;
+-- 2. Drop the existing constraint using the name found (e.g., 'logs_user_fk'):
+--    ALTER TABLE logs DROP FOREIGN KEY logs_user_fk;
+-- 3. Add it back with the correct behavior:
+--    ALTER TABLE logs ADD CONSTRAINT logs_user_fk FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL;

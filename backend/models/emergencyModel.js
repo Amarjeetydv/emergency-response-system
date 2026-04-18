@@ -1,17 +1,14 @@
 const db = require('../config/db');
 
 const Emergency = {
-  create: async (citizenId, emergencyType, latitude, longitude) => {
-    // 3. Update query to include status and assigned_responder
+  create: async (citizenId, emergencyType, latitude, longitude, description, mediaUrl) => {
     const sql = `
       INSERT INTO emergencies 
-      (citizen_id, emergency_type, latitude, longitude, status, assigned_responder) 
-      VALUES (?, ?, ?, ?, ?, ?)
+      (citizen_id, emergency_type, latitude, longitude, status, description, media_url, assigned_responder) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
-    // 4. Set defaults: status is 'pending', assigned_responder is null
-    // We use || null to ensure no 'undefined' values reach the database
-    const params = [citizenId, emergencyType, latitude, longitude, 'pending', null];
+    const params = [citizenId, emergencyType, latitude, longitude, 'pending', description || null, mediaUrl || null, null];
     
     const [result] = await db.execute(sql, params);
     return result.insertId;
@@ -26,6 +23,20 @@ const Emergency = {
       ORDER BY e.created_at DESC
     `;
     const [rows] = await db.execute(sql);
+    return rows;
+  },
+
+  findNearby: async (lat, lng, radiusKm) => {
+    const sql = `
+      SELECT e.*, u.name as citizen_name, r.name as responder_name,
+      ST_Distance_Sphere(point(e.longitude, e.latitude), point(?, ?)) / 1000 AS distance
+      FROM emergencies e
+      JOIN users u ON e.citizen_id = u.id
+      LEFT JOIN users r ON e.assigned_responder = r.id
+      HAVING distance <= ?
+      ORDER BY distance ASC
+    `;
+    const [rows] = await db.execute(sql, [lng, lat, radiusKm]);
     return rows;
   },
 

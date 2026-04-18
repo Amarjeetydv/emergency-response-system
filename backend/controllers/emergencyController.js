@@ -1,14 +1,26 @@
 const Emergency = require('../models/emergencyModel');
 const Log = require('../models/logModel');
 const Message = require('../models/messageModel');
-const admin = require('firebase-admin');
-const OpenAI = require('openai');
+
+let OpenAI;
+try {
+  OpenAI = require('openai');
+} catch (e) {
+  console.warn('OpenAI module not found. AI classification features will be disabled.');
+}
+
+let ImageKit;
+try {
+  ImageKit = require('imagekit');
+} catch (e) {
+  console.warn('ImageKit module not found. Image uploads will be disabled.');
+}
 
 const ALLOWED_STATUSES = ['pending', 'accepted', 'in_progress', 'completed', 'cancelled', 'escalated'];
 
 // Initialize OpenAI (ensure OPENAI_API_KEY is in your .env)
 let openai = null;
-if (process.env.OPENAI_API_KEY) {
+if (OpenAI && process.env.OPENAI_API_KEY) {
   try {
     openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -16,6 +28,18 @@ if (process.env.OPENAI_API_KEY) {
   } catch (error) {
     console.error('OpenAI initialization failed:', error.message);
   }
+}
+
+// Initialize ImageKit
+let imagekit = null;
+if (ImageKit && process.env.IMAGEKIT_PUBLIC_KEY && process.env.IMAGEKIT_PRIVATE_KEY && process.env.IMAGEKIT_URL_ENDPOINT) {
+  imagekit = new ImageKit({
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
+  });
+} else {
+  console.warn('ImageKit credentials missing. File uploads will not be processed.');
 }
 
 // Helper: Haversine formula to calculate distance in Kilometers
@@ -73,20 +97,6 @@ function validateTransition(current, next, { isAdmin, userId, row }) {
   return { ok: false, message: `Invalid status transition from ${current} to ${next}` };
 }
 
-async function sendPushNotification(title, body, data = {}) {
-  const message = {
-    notification: { title, body },
-    data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-    topic: 'emergencies'
-  };
-
-  try {
-    await admin.messaging().send(message);
-  } catch (error) {
-    console.error('FCM Error:', error);
-  }
-}
-
 /**
  * Uses AI to classify the emergency based on user description
  */
@@ -113,45 +123,71 @@ async function classifyEmergencyText(text) {
 // @desc    Report a new emergency (citizen)
 // @route   POST /api/emergencies
 const createEmergency = async (req, res) => {
-  const { emergency_type, description, latitude, longitude } = req.body;
+  // Debug logs to identify why fields are missing
+  console.log('--- New Emergency Request ---');
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Received Body:', req.body);
+
+  const { emergency_type, emergencyType, description, latitude, longitude } = req.body || {};
+  
+  const finalEmergencyType = emergency_type || emergencyType;
+  const parsedLat = (latitude !== undefined && latitude !== null) ? parseFloat(latitude) : NaN;
+  const parsedLng = (longitude !== undefined && longitude !== null) ? parseFloat(longitude) : NaN;
 
   if (req.user.role !== 'citizen') {
     return res.status(403).json({ message: 'Only citizens can create emergency requests' });
   }
 
-  if (!emergency_type || latitude === undefined || longitude === undefined) {
-    return res.status(400).json({ message: 'Please provide emergency type, latitude, and longitude' });
+  if (!finalEmergencyType || isNaN(parsedLat) || isNaN(parsedLng)) {
+    return res.status(400).json({ 
+      message: 'Please provide emergency type, latitude, and longitude',
+      received: { type: finalEmergencyType, lat: parsedLat, lng: parsedLng }
+    });
   }
 
   try {
-    let finalType = emergency_type;
+    let finalType = finalEmergencyType;
 
     // If description is provided, use AI to classify or verify the type
     if (description && description.length > 5) {
-      const aiType = await classifyEmergencyText(description);
+      const aiType = await classifyEmergencyText(description).catch(() => null);
       if (aiType) finalType = aiType;
+    }
+
+    let media_url = null;
+    if (req.file && imagekit) {
+      try {
+        const uploadResponse = await imagekit.upload({
+          file: req.file.buffer, // Buffer from memoryStorage
+          fileName: `emergency-${Date.now()}-${req.file.originalname}`,
+          folder: '/emergencies'
+        });
+        media_url = uploadResponse.url; // Use the absolute URL from ImageKit
+      } catch (err) {
+        console.error('ImageKit Upload Error:', err.message);
+      }
     }
 
     const insertId = await Emergency.create(
       req.user.id,
       finalType,
-      latitude,
-      longitude
+      parsedLat,
+      parsedLng,
+      description || null,
+      media_url
     );
 
     await Log.create(insertId, 'pending', req.user.id);
+    console.log(`Emergency #${insertId} saved to DB.`);
 
     const io = req.app.get('socketio');
     const payload = await Emergency.findByIdDetailed(insertId);
-    io.emit('newEmergency', payload);
+    if (io) {
+      io.emit('newEmergency', payload);
+      console.log('Socket event "newEmergency" emitted');
+    }
 
-    // Send Push Notification to all responders
-    sendPushNotification(
-      `NEW EMERGENCY: ${emergency_type.toUpperCase()}`,
-      `A new request has been reported at your location. Please check the dashboard.`
-    );
-
-    res.status(201).json({ id: insertId, message: 'Emergency reported successfully' });
+    res.status(201).json({ id: insertId, message: 'Emergency reported successfully', data: payload });
   } catch (error) {
     console.error('Create Emergency Error:', error);
     res.status(500).json({ message: 'Error reporting emergency', error: error.message });
@@ -162,6 +198,7 @@ const createEmergency = async (req, res) => {
 // @route   GET /api/emergencies
 const getAllEmergencies = async (req, res) => {
   try {
+    console.log(`Fetching emergencies for user: ${req.user.email} (Role: ${req.user.role})`);
     if (req.user.role === 'citizen') {
       const rows = await Emergency.findByCitizenId(req.user.id);
       return res.json(rows);
@@ -174,6 +211,7 @@ const getAllEmergencies = async (req, res) => {
       if (lat && lng) {
         const rLat = parseFloat(lat);
         const rLng = parseFloat(lng);
+        console.log(`Filtering for responder at: ${rLat}, ${rLng}`);
         rows = rows.filter(e => calculateDistance(rLat, rLng, e.latitude, e.longitude) <= 50);
       }
 
@@ -189,7 +227,11 @@ const getAllEmergencies = async (req, res) => {
 // @route   POST /api/emergencies/accept-request
 const acceptRequest = async (req, res) => {
   const { request_id, responder_lat, responder_lng } = req.body;
-  const responder_id = req.user.id;
+  const responder_id = req.user.id; // Correct: Use the ID from the authenticated token
+
+  if (!request_id || !responder_lat || !responder_lng) {
+    return res.status(400).json({ message: 'Missing required location data' });
+  }
 
   try {
     // Atomic update: only update if status is still pending
@@ -231,8 +273,9 @@ const getChatHistory = async (req, res) => {
 // @desc    Update emergency status
 // @route   PUT /api/emergencies/:id
 const updateStatus = async (req, res) => {
-  const { status, responder_id, responder_lat, responder_lng } = req.body;
+  const { status, responder_lat, responder_lng } = req.body;
   const emergencyId = Number(req.params.id);
+  const responder_id = req.user.id; // Use secure ID from JWT
 
   if (!status || !ALLOWED_STATUSES.includes(status)) {
     return res.status(400).json({ message: 'Valid status is required' });
@@ -337,20 +380,13 @@ const processEscalations = async (io) => {
       const affected = await Emergency.escalate(req.id);
       if (affected === 0) continue; 
 
-      await Log.create(req.id, 'escalated', 0); // 0 represents System/Automation
+      await Log.create(req.id, 'escalated', null); // null represents System/Automation
       
       const detailed = await Emergency.findByIdDetailed(req.id);
       
       // Notify dispatchers specifically or broadcast high-priority update
       io.emit('emergencyEscalated', detailed);
       io.emit('emergencyUpdate', detailed);
-      
-      // Send High-Priority Push Notification
-      sendPushNotification(
-        `CRITICAL: Escalated Emergency #${req.id}`,
-        `An emergency has not been accepted for 5 minutes and requires immediate attention!`,
-        { priority: 'high', emergencyId: String(req.id) }
-      );
 
       console.log(`[Escalation] Emergency #${req.id} escalated due to timeout.`);
     }
