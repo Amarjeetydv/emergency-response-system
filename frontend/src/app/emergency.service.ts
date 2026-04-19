@@ -25,8 +25,8 @@ export class EmergencyService {
 
   private initSocket(): void {
     const token = this.getToken();
-    // Ensure we point to the root of the backend server (port 5000)
-    const serverUrl = 'http://localhost:5000';
+    // Dynamically get the server root from the environment configuration
+    const serverUrl = environment.apiUrl.replace('/api', '');
     
     this.socket = io(serverUrl, {
       auth: { token },

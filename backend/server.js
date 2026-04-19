@@ -12,6 +12,21 @@ const { createClient } = require('redis');
 // Load env vars
 dotenv.config();
 
+// Pre-flight check: Ensure required environment variables are present
+const requiredEnvVars = [
+  'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET',
+  'IMAGEKIT_PUBLIC_KEY', 'IMAGEKIT_PRIVATE_KEY', 'IMAGEKIT_URL_ENDPOINT'
+];
+const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+
+if (missingVars.length > 0) {
+  console.error('❌ CRITICAL ERROR: Missing required environment variables:');
+  missingVars.forEach(v => console.error(`   - ${v}`));
+  console.warn('Check the Environment tab in your Render dashboard.');
+  // In production, we should exit if configuration is invalid
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+}
+
 // Route files
 const authRoutes = require('./routes/authRoutes');
 const emergencyRoutes = require('./routes/emergencyRoutes');
@@ -56,7 +71,21 @@ if (process.env.REDIS_URL) {
 }
 
 // Middleware
-app.use(cors());
+const allowedOrigins = [
+  'https://emergency-response-system-frontend.vercel.app',
+  'http://localhost:4200'
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

@@ -6,12 +6,13 @@ const Emergency = {
       INSERT INTO emergencies 
       (citizen_id, emergency_type, latitude, longitude, status, description, media_url, assigned_responder) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
     `;
     
     const params = [citizenId, emergencyType, latitude, longitude, 'pending', description || null, mediaUrl || null, null];
     
-    const [result] = await db.execute(sql, params);
-    return result.insertId;
+    const [rows] = await db.execute(sql, params);
+    return rows[0].id;
   },
 
   findAll: async () => {
@@ -29,14 +30,15 @@ const Emergency = {
   findNearby: async (lat, lng, radiusKm) => {
     const sql = `
       SELECT e.*, u.name as citizen_name, r.name as responder_name,
-      ST_Distance_Sphere(point(e.longitude, e.latitude), point(?, ?)) / 1000 AS distance
+      (6371 * acos(cos(radians(?)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(?)) + sin(radians(?)) * sin(radians(e.latitude)))) AS distance
       FROM emergencies e
       JOIN users u ON e.citizen_id = u.id
       LEFT JOIN users r ON e.assigned_responder = r.id
-      HAVING distance <= ?
+      WHERE (6371 * acos(cos(radians(?)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(?)) + sin(radians(?)) * sin(radians(e.latitude)))) <= ?
       ORDER BY distance ASC
     `;
-    const [rows] = await db.execute(sql, [lng, lat, radiusKm]);
+    // PostgreSQL doesn't support HAVING for calculated columns in this context easily, so we repeat the formula in WHERE
+    const [rows] = await db.execute(sql, [lat, lng, lat, lat, lng, lat, radiusKm]);
     return rows;
   },
 
@@ -113,7 +115,7 @@ const Emergency = {
     const sql = `
       SELECT id FROM emergencies 
       WHERE status = 'pending' 
-      AND created_at < NOW() - INTERVAL ? MINUTE
+      AND created_at < (NOW() - INTERVAL ? MINUTE)
     `;
     const [rows] = await db.execute(sql, [thresholdMinutes]);
     return rows;
