@@ -23,9 +23,9 @@ const User = {
       query += ', approval_status';
       values.push(approval_status);
     }
-    query += ') VALUES (?, ?, ?, ?, ?' + (approval_status !== undefined && approval_status !== null ? ', ?' : '') + ') RETURNING id';
-    const [rows] = await db.execute(query, values);
-    return rows[0].id;
+    query += ') VALUES (?, ?, ?, ?, ?' + (approval_status !== undefined && approval_status !== null ? ', ?' : '') + ')';
+    const [result] = await db.execute(query, values);
+    return result.insertId;
   },
 
   // Get all users

@@ -13,17 +13,12 @@ const pool = mysql.createPool({
 });
 
 pool.getConnection()
-  .then(conn => {
+  .then(connection => {
     console.log(`✅ Connected to MySQL database at ${process.env.DB_HOST}`);
-    conn.release();
+    connection.release();
   })
   .catch(err => {
-    console.error('❌ MySQL Connection Failed:');
-    console.error(`   Host: ${process.env.DB_HOST}`);
-    console.error(`   Error: ${err.message}`);
+    console.error('Error connecting to the MySQL database:', err.stack);
   });
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-  execute: (text, params) => pool.execute(text, params)
-};
+module.exports = pool;
