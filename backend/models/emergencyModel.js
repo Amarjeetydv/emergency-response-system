@@ -10,8 +10,8 @@ const Emergency = {
     
     const params = [citizenId, emergencyType, latitude, longitude, 'pending', description || null, mediaUrl || null, null];
     
-    const [result] = await db.execute(sql, params);
-    return result.insertId;
+    const result = await db.query(sql, params);
+    return result.rows[0]?.id || result.insertId;
   },
 
   findAll: async () => {
@@ -22,8 +22,8 @@ const Emergency = {
       LEFT JOIN users r ON e.assigned_responder = r.id
       ORDER BY e.created_at DESC
     `;
-    const [rows] = await db.execute(sql);
-    return rows;
+    const result = await db.query(sql);
+    return result.rows;
   },
 
   findNearby: async (lat, lng, radiusKm) => {
@@ -36,8 +36,8 @@ const Emergency = {
       HAVING distance <= ?
       ORDER BY distance ASC
     `;
-    const [rows] = await db.execute(sql, [lng, lat, radiusKm]);
-    return rows;
+    const result = await db.query(sql, [lng, lat, radiusKm]);
+    return result.rows;
   },
 
   findByCitizenId: async (citizenId) => {
@@ -105,8 +105,8 @@ const Emergency = {
       SET status = 'escalated' 
       WHERE id = ? AND status = 'pending'
     `;
-    const [result] = await db.execute(sql, [id]);
-    return result.affectedRows;
+    const result = await db.query(sql, [id]);
+    return result.rowCount;
   },
 
   findStalePending: async (thresholdMinutes = 5) => {
@@ -115,8 +115,8 @@ const Emergency = {
       WHERE status = 'pending' 
       AND created_at < NOW() - INTERVAL ? MINUTE
     `;
-    const [rows] = await db.execute(sql, [thresholdMinutes]);
-    return rows;
+    const result = await db.query(sql, [thresholdMinutes]);
+    return result.rows;
   }
 };
 

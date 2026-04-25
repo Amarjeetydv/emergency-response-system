@@ -66,6 +66,11 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'UP', timestamp: new Date() });
 });
 
+// Root route for Render and general status
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Emergency Response Coordination System Backend is running.' });
+});
+
 // Make io accessible to our router
 app.set('socketio', io);
 
