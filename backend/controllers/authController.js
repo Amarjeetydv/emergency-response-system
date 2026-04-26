@@ -1,12 +1,15 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/userModel');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const userModel = require("../models/userModel");
+const User = userModel; // fix: User is used below
 
 // Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "30d" }
+  );
 };
 
 
@@ -15,94 +18,83 @@ const registerUser = async (req, res) => {
   const { name, email, password, phone, role } = req.body;
 
   if (!name || !email || !password || !role) {
-    return res.status(400).json({ 
-      message: 'Missing required fields', 
-      required: ['name', 'email', 'password', 'role'] 
+    return res.status(400).json({
+      message: "Missing required fields",
+      required: ["name", "email", "password", "role"],
     });
   }
 
   try {
-    // Check if user exists
-    const userExists = await User.findByEmail(email);
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+    const existing = await User.findByEmail(email);
+    if (existing) {
+      return res.status(409).json({ message: "User already exists" });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // IMPORTANT: admin ko citizen me downgrade mat karo
+    const userRole = role;
 
-    // Only allow admin@gmail.com to be admin
-    let userRole = role;
-    if (email === 'admin@gmail.com') {
-      userRole = 'admin';
-    }
-    // If responder (police, fire, ambulance), set approval_status to 'pending'
-    let approvalStatus = null;
-    if (["police", "fire", "ambulance"].includes(userRole)) {
-      approvalStatus = 'pending';
-    }
+    const approval_status =
+      ["police", "ambulance", "fire", "responder", "dispatcher"].includes(userRole)
+        ? "pending"
+        : null;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const userId = await User.create({
       name,
       email,
       password: hashedPassword,
       role: userRole,
-      phone,
-      approval_status: approvalStatus
+      phone: phone || null,
+      approval_status,
     });
-    const newUser = await User.findById(userId);
 
-    if (newUser) {
-      res.status(201).json({
-        _id: newUser.id,
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-        approval_status: newUser.approval_status,
-        token: generateToken(newUser.id),
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
-  } catch (error) {
-    // Logging the actual error is key to debugging
-    console.error('Registration Error:', error.message);
-    res.status(500).json({ 
-      message: 'Server error during registration',
-      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    const createdUser = await User.findById(userId);
+
+    return res.status(201).json({
+      message: "User registered successfully",
+      token: generateToken(createdUser),
+      user: createdUser, // must include role
     });
+  } catch (error) {
+    console.error("registerUser error:", error);
+    return res.status(500).json({ message: "Server error during registration" });
   }
 };
 
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Please provide email and password' });
-  }
-
   try {
-    // Check for user by email
+    const { email, password } = req.body;
     const user = await User.findByEmail(email);
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-      res.json({
-        _id: user.id,
+    if (!user) return res.status(401).json({ message: "Invalid email or password" });
+
+    let ok = await bcrypt.compare(password, user.password);
+
+    // Legacy compatibility: if old seed data stored plain-text password,
+    // allow one-time login and immediately migrate to bcrypt hash.
+    if (!ok && password === user.password) {
+      ok = true;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await User.updatePasswordHash(user.id, hashedPassword);
+    }
+
+    if (!ok) return res.status(401).json({ message: "Invalid email or password" });
+
+    return res.status(200).json({
+      message: "Login successful",
+      token: generateToken(user),
+      user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
-        approval_status: user.approval_status,
-        token: generateToken(user.id),
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid credentials' });
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error during login' });
+        approval_status: user.approval_status
+      }
+    });
+  } catch (err) {
+    console.error("loginUser error:", err);
+    return res.status(500).json({ message: "Server error during login" });
   }
 };
 

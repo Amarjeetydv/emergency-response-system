@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-register',
@@ -12,6 +13,8 @@ import { HttpClient } from '@angular/common/http';
   styleUrl: './login.component.scss' // Reusing auth styles
 })
 export class RegisterComponent {
+  private authUrl = environment.apiUrl ? `${environment.apiUrl}/auth` : '/api/auth';
+
   user = {
     name: '',
     email: '',
@@ -42,7 +45,7 @@ export class RegisterComponent {
       role: this.user.role
     };
 
-    this.http.post<any>('http://localhost:5000/api/auth/register', registrationData).subscribe({
+    this.http.post<any>(`${this.authUrl}/register`, registrationData).subscribe({
       next: () => {
         this.isSubmitting = false;
         this.errorMessage = '';

@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 
-UPDATE users SET role = 'admin' WHERE email = 'admin@gmail.com';
+UPDATE users SET role='admin' WHERE email='admin@gmail.com';
+
 ALTER TABLE users ADD COLUMN approval_status ENUM('pending', 'approved', 'rejected') DEFAULT NULL;
 
 -- Run these commands to fix the "Unknown column" error in your existing database
