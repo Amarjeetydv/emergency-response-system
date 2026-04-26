@@ -95,7 +95,12 @@ const Emergency = {
           responder_lng = ? 
       WHERE id = ? AND status IN ('pending', 'escalated')
     `;
-    const [result] = await db.execute(sql, [responderId, lat, lng, id]);
+    const [result] = await db.execute(sql, [
+      responderId ?? null,
+      lat ?? null,
+      lng ?? null,
+      id
+    ]);
     return result.affectedRows;
   },
 
