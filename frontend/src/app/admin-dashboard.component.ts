@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EmergencyService } from './emergency.service';
-import { SocketService } from './socket.service';
 import * as L from 'leaflet';
 import 'leaflet.heat';
 import { Subscription } from 'rxjs';
@@ -235,19 +234,9 @@ import { Subscription } from 'rxjs';
     .nav-tabs .nav-link { border: none; color: #64748b; font-weight: 500; padding: 1rem 1.5rem; }
     .nav-tabs .nav-link.active { color: #6366f1; border-bottom: 3px solid #6366f1; background: transparent; }
     .table-responsive { border: none; border-radius: 12px; overflow: hidden; }
-    #adminMap {
-      height: 70vh !important;
-      min-height: 400px;
-      width: 98vw !important;
-      max-width: 1600px;
-      margin: 0 auto;
-      border-radius: 16px;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-    }
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1.5rem; backdrop-filter: blur(4px); }
     .modal-content { width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 16px; border: none; }
-    @media (max-width: 1200px) { #adminMap { width: 100vw !important; } }
-    @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } #adminMap { height: 50vh !important; min-height: 250px; } }
+    @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
   `]
 })
 export class AdminDashboardComponent implements OnInit, OnDestroy {
@@ -265,7 +254,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private heatmapLayer: any;
   private subs = new Subscription();
   private emergencyService = inject(EmergencyService);
-  private socketService = inject(SocketService);
 
   ngOnInit() {
     this.loadData();
@@ -279,10 +267,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         this.updateResponderMarker(ev.data);
       }
     }));
-    // Listen for real-time responder/vehicle location updates
-    this.socketService.listen('responderLocationUpdate').subscribe((data) => {
-      this.updateResponderMarker(data);
-    });
   }
 
   setActiveTab(tab: 'map' | 'users' | 'incidents') {
@@ -437,12 +421,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     });
 
     const marker = L.marker([lat, lng], { icon })
-      .bindPopup(`
-        <b>Responder ID:</b> ${data.responderId}<br>
-        <b>Speed:</b> ${data.speed || 'N/A'} km/h<br>
-        <b>Direction:</b> ${data.direction || 'N/A'}<br>
-        <b>Battery:</b> ${data.battery || 'N/A'}%
-      `)
+      .bindPopup(`Responder ID: ${data.responderId}`)
       .addTo(this.map);
     
     this.markers[key] = marker;

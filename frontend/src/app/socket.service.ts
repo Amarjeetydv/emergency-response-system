@@ -9,7 +9,7 @@ export class SocketService {
   private socket: Socket;
 
   constructor() {
-    this.socket = io('https://emergency-response-system-backend.onrender.com');
+    this.socket = io('http://localhost:5000');
   }
 
   listen(eventName: string): Observable<any> {
