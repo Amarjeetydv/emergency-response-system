@@ -213,11 +213,12 @@ import { Subscription } from 'rxjs';
     .admin-wrapper { 
       padding: 1.5rem; 
       background: #f4f7f9; 
-      min-height: 100vh; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
+      min-height: 100%; 
+      display: flex;
+      flex-direction: column;
       width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
     .stats-grid, .nav-tabs, .toolbar, .table-responsive { width: 100%; display: block; }
     [hidden] { display: none !important; }
@@ -231,12 +232,37 @@ import { Subscription } from 'rxjs';
     .media-thumb { width: 60px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer; transition: transform 0.2s; }
     .media-thumb:hover { transform: scale(1.1); }
     .smallest { font-size: 0.75rem; }
-    .nav-tabs .nav-link { border: none; color: #64748b; font-weight: 500; padding: 1rem 1.5rem; }
+    .nav-tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }
+    .nav-item { list-style: none; }
+    .nav-tabs .nav-link { border: none; color: #64748b; font-weight: 500; padding: 0.7rem 0.85rem; border-radius: 8px; background: #f8fafc; }
     .nav-tabs .nav-link.active { color: #6366f1; border-bottom: 3px solid #6366f1; background: transparent; }
-    .table-responsive { border: none; border-radius: 12px; overflow: hidden; }
+    .table-responsive { border: none; border-radius: 12px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; background: #fff; }
+    .table { min-width: 880px; margin-bottom: 0; }
+    #adminMap { max-width: 100%; }
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1.5rem; backdrop-filter: blur(4px); }
     .modal-content { width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 16px; border: none; }
-    @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .admin-wrapper { padding: 0.75rem; }
+      .stats-grid { grid-template-columns: 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+      .stat-card { padding: 0.9rem; border-radius: 10px; }
+      .stat-value { font-size: 1.15rem; }
+      .stat-label { font-size: 0.78rem; }
+      .toolbar { padding: 0.75rem !important; }
+      .nav-tabs .nav-link { font-size: 0.8rem; padding: 0.55rem 0.65rem; }
+      #adminMap { height: 320px !important; }
+      .modal-overlay { padding: 0.75rem; }
+      .modal-content { border-radius: 12px; max-height: 95vh; }
+    }
+
+    @media (max-width: 420px) {
+      .admin-wrapper { padding: 0.5rem; }
+      .stats-grid { gap: 0.6rem; }
+      .stat-card { padding: 0.75rem; }
+      .stat-icon { width: 40px; height: 40px; font-size: 1.1rem; margin-right: 0.65rem; }
+      .nav-tabs .nav-link { font-size: 0.75rem; padding: 0.5rem 0.55rem; }
+      #adminMap { height: 260px !important; }
+      .table { min-width: 760px; }
+    }
   `]
 })
 export class AdminDashboardComponent implements OnInit, OnDestroy {

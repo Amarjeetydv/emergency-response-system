@@ -85,3 +85,29 @@
     color: #fff;
   }
 }
+
+@media (max-width: 768px) {
+  .citizen-panel {
+    max-width: 100%;
+    padding: 0.5rem 0;
+  }
+
+  .request-card {
+    padding: 0.85rem;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .meta {
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+  }
+
+  .cancel-btn {
+    width: 100%;
+  }
+}

@@ -42,6 +42,7 @@ function canUseResponderDashboard(user: any): boolean {
           </button>
         </div>
       </aside>
+      <div class="sidebar-backdrop" *ngIf="!isCollapsed" (click)="isCollapsed = true"></div>
 
       <div class="content-area">
         <nav class="top-navbar">
@@ -70,8 +71,8 @@ function canUseResponderDashboard(user: any): boolean {
     </div>
   `,
   styles: [`
-    .app-wrapper { display: flex; min-height: 100vh; background: #f8fafc; }
-    .side-nav { width: 260px; background: #1e293b; color: #f8fafc; display: flex; flex-direction: column; transition: width 0.3s; }
+    .app-wrapper { display: flex; min-height: 100vh; background: #f8fafc; position: relative; }
+    .side-nav { width: 260px; background: #1e293b; color: #f8fafc; display: flex; flex-direction: column; transition: transform 0.3s ease, width 0.3s ease; flex-shrink: 0; }
     .nav-brand { padding: 1.5rem; display: flex; align-items: center; background: rgba(0,0,0,0.1); }
     .brand-icon { font-size: 1.5rem; margin-right: 0.75rem; }
     .brand-text { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.5px; }
@@ -81,17 +82,23 @@ function canUseResponderDashboard(user: any): boolean {
     .menu-item:hover, .menu-item.active { background: #334155; color: #fff; }
     .user-footer { padding: 1rem; border-top: 1px solid #334155; }
     .btn-logout { width: 100%; padding: 0.75rem; background: #ef4444; border: none; color: white; border-radius: 8px; font-weight: 600; cursor: pointer; }
-    .content-area { flex: 1; display: flex; flex-direction: column; }
+    .content-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .top-navbar { height: 64px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; }
     .toggle-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
+    .top-meta { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+    .top-meta strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .sidebar-backdrop { display: none; }
     
     /* Responsive Logic */
     .sidebar-collapsed .side-nav { width: 0; overflow: hidden; }
     .sidebar-collapsed .brand-text, .sidebar-collapsed .logout-text { display: none; }
     @media (max-width: 768px) {
-      .side-nav { position: fixed; height: 100%; z-index: 1000; left: -260px; }
-      .app-wrapper:not(.sidebar-collapsed) .side-nav { left: 0; }
-      .sidebar-collapsed .side-nav { left: -260px; }
+      .side-nav { position: fixed; height: 100%; z-index: 1001; left: 0; top: 0; width: min(82vw, 280px); transform: translateX(0); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+      .sidebar-collapsed .side-nav { width: min(82vw, 280px); transform: translateX(-100%); overflow: visible; }
+      .sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 1000; }
+      .top-navbar { padding: 0 0.85rem; }
+      .top-meta strong { max-width: 112px; font-size: 0.9rem; }
+      .p-4 { padding: 0.85rem !important; }
     }
   `]
 })
@@ -106,5 +113,6 @@ export class DashboardComponent implements OnInit {
     const user = this.authService.getUser();
     this.role = user?.role || 'citizen';
     this.showResponder = canUseResponderDashboard(user);
+    this.isCollapsed = window.innerWidth <= 768;
   }
 }

@@ -192,4 +192,13 @@ button {
     width: 100%;
     height: auto;
   }
+
+  .bg-rotator .bg {
+    background-attachment: scroll;
+  }
+
+  .incident-modal-content {
+    padding: 1rem;
+    min-width: 0;
+  }
 }

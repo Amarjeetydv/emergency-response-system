@@ -72,6 +72,8 @@ declare var L: any; // Leaflet Global Variable
       padding: 2rem;
       max-width: 500px;
       margin: auto;
+      width: 100%;
+      box-sizing: border-box;
     }
     .header-urgent h2 { color: var(--danger); margin-bottom: 0.5rem; }
     #map { height: 250px; width: 100%; }
@@ -124,6 +126,25 @@ declare var L: any; // Leaflet Global Variable
       0% { transform: scale(1); }
       50% { transform: scale(1.02); }
       100% { transform: scale(1); }
+    }
+
+    @media (max-width: 768px) {
+      .request-container {
+        padding: 1rem;
+        border-radius: 12px;
+      }
+      .header-urgent h2 {
+        font-size: 1.15rem;
+      }
+      .instruction-text {
+        font-size: 0.8rem;
+      }
+      #map, .mini-map {
+        height: 220px;
+      }
+      select, textarea, .btn-block, .btn-outline {
+        font-size: 0.95rem;
+      }
     }
     `]
 })
