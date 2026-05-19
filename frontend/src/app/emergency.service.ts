@@ -104,6 +104,10 @@ export class EmergencyService {
     return this.http.post(`${this.apiUrl}/accept-request`, data, { headers: this.getHeaders() });
   }
 
+  acceptEmergencyRequest(data: { request_id: number; responder_lat?: number; responder_lng?: number }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/accept-request`, data, { headers: this.getHeaders() });
+  }
+
   updateStatus(id: number, body: { status: string; responder_id?: number }): Observable<any> {
     return this.http.put(`${this.apiUrl}/${id}`, body, { headers: this.getHeaders() });
   }

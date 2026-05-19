@@ -1,6 +1,6 @@
 <div class="citizen-panel">
   <section class="report-section">
-    <app-emergency-request [embedMode]="true" (submitted)="refresh()"></app-emergency-request>
+    <app-emergency-request [embedMode]="true" (submitted)="handleSubmitted($event)"></app-emergency-request>
   </section>
 
   <section class="list-section">

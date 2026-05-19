@@ -150,7 +150,7 @@ declare var L: any; // Leaflet Global Variable
 })
 export class EmergencyRequestComponent implements OnInit, AfterViewInit {
   @Input() embedMode = false;
-  @Output() submitted = new EventEmitter<void>();
+  @Output() submitted = new EventEmitter<any>();
 
   request = { emergency_type: 'police', latitude: 0, longitude: 0, description: '' };
   selectedFile: File | null = null;
@@ -289,10 +289,10 @@ export class EmergencyRequestComponent implements OnInit, AfterViewInit {
     }
 
     this.emergencyService.createEmergency(formData).subscribe({
-      next: () => {
+      next: (response) => {
         this.isSubmitting = false;
         this.successMessage = 'Emergency reported. Responders have been notified.';
-        this.submitted.emit();
+        this.submitted.emit(response?.data || response);
         if (!this.embedMode) {
           setTimeout(() => this.router.navigate(['/dashboard']), 2500);
         }

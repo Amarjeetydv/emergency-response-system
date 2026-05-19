@@ -89,13 +89,13 @@ export class ResponderPanelComponent implements OnInit, OnDestroy {
   }
 
   private finalizeAccept(e: any, pos: GeolocationPosition | null): void {
-    const payload: any = { status: 'accepted' };
+    const payload: any = { request_id: e.id };
     if (pos) {
       payload.responder_lat = pos.coords.latitude;
       payload.responder_lng = pos.coords.longitude;
     }
 
-    this.emergencyService.updateStatus(e.id, payload).subscribe({
+    this.emergencyService.acceptEmergencyRequest(payload).subscribe({
       next: () => {
         console.log(`[Accept] API Success for ID: ${e.id}`);
         this.processingMap[e.id] = false;
@@ -116,7 +116,8 @@ export class ResponderPanelComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('[Accept] API Error:', err);
         this.processingMap[e.id] = false;
-        alert('Failed to accept request. Please try again.');
+        const detail = err?.error?.message || err?.message || 'Failed to accept request. Please try again.';
+        alert(detail);
       }
     });
   }

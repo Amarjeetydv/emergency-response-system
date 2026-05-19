@@ -2,8 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EmergencyService } from './emergency.service';
-import * as L from 'leaflet';
-import 'leaflet.heat';
+let Leaflet: any = null;
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -263,6 +262,28 @@ import { Subscription } from 'rxjs';
       #adminMap { height: 260px !important; }
       .table { min-width: 760px; }
     }
+
+    /* Map overlay and responder styles */
+    .map-overlay {
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      width: 260px;
+      max-height: 420px;
+      overflow-y: auto;
+      z-index: 2200;
+      background: rgba(255,255,255,0.95);
+      border-radius: 10px;
+    }
+    .responder-row { padding: 8px; border-bottom: 1px solid #f1f5f9; }
+    .responder-avatar { width: 36px; height: 36px; border-radius: 50%; background: #6366f1; color: white; display:flex; align-items:center; justify-content:center; font-weight:700; }
+    .responder-row:last-child { border-bottom: none; }
+    .responder-row .btn-group { min-width: 70px; }
+    .marker-div-icon { background: transparent; }
+    .marker-badge { width: 36px; height: 36px; border-radius: 18px; display:flex; align-items:center; justify-content:center; color: #fff; font-weight:700; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border: 2px solid #fff; }
+    .marker-source { background: #10b981; }
+    .marker-dest { background: #ef4444; }
+    .marker-label { background: rgba(255,255,255,0.9); padding: 2px 6px; border-radius: 4px; color: #111827; font-size: 0.85rem; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
   `]
 })
 export class AdminDashboardComponent implements OnInit, OnDestroy {
@@ -275,11 +296,16 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   roleFilter = '';
 
   showHeatmap = false;
-  private map!: L.Map;
+  private map: any;
   private markers: { [key: string]: any } = {};
   private heatmapLayer: any;
+  responderList: { responderId: string, name?: string, role?: string, lat?: number, lng?: number, ts?: number }[] = [];
+  private cluster: any;
+  private sourceIcon: any;
+  private destIcon: any;
   private subs = new Subscription();
   private emergencyService = inject(EmergencyService);
+  
 
   ngOnInit() {
     this.loadData();
@@ -299,7 +325,37 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.activeTab = tab;
     if (tab === 'map' && this.map) {
       // Leaflet needs to re-calculate its size when the container becomes visible
-      setTimeout(() => this.map.invalidateSize(), 100);
+      setTimeout(() => {
+        this.map.invalidateSize();
+        // Fit map to relevant markers (prefer source/destination if present)
+        this.fitToRelevantMarkers();
+      }, 100);
+    }
+  }
+
+  fitToRelevantMarkers() {
+    if (!this.map) return;
+    // prefer source/destination roles if available
+    const pts: any[] = [];
+    const srcDstPts: any[] = [];
+    Object.keys(this.markers).forEach(k => {
+      const m = this.markers[k];
+      if (!m) return;
+      const latlng = m.getLatLng ? m.getLatLng() : null;
+      if (!latlng) return;
+      pts.push(latlng);
+      const role = (m as any).options?.role;
+      if (role === 'source' || role === 'destination') srcDstPts.push(latlng);
+    });
+
+    const toUse = srcDstPts.length >= 2 ? srcDstPts : (pts.length ? pts : null);
+    if (toUse && toUse.length > 0) {
+      try {
+        const bounds = Leaflet.latLngBounds(toUse);
+        this.map.fitBounds(bounds, { padding: [60, 60] });
+      } catch (err) {
+        console.warn('fitToRelevantMarkers failed', err);
+      }
     }
   }
 
@@ -366,10 +422,52 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.selectedIncident = null;
   }
 
-  initMap() {
-    this.map = L.map('adminMap').setView([0, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
-    
+  async initMap() {
+    // Dynamically load Leaflet and the heat plugin to avoid adding them to the initial bundle
+    if (!Leaflet) {
+      try {
+        const mod = await import('leaflet');
+        Leaflet = (mod as any).default || mod;
+      } catch (err) {
+        console.error('Failed to load Leaflet:', err);
+        return;
+      }
+
+      try {
+        await import('leaflet.heat');
+      } catch (err) {
+        console.warn('Failed to load leaflet.heat plugin (optional):', err);
+      }
+    }
+
+    this.map = Leaflet.map('adminMap').setView([0, 0], 2);
+    Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.map);
+
+    // Try to load markercluster plugin and create a cluster group
+    try {
+      await import('leaflet.markercluster');
+      this.cluster = (Leaflet as any).markerClusterGroup({ chunkedLoading: true });
+      this.map.addLayer(this.cluster);
+    } catch (err) {
+      console.warn('leaflet.markercluster not available, continuing without clustering', err);
+      this.cluster = null;
+    }
+
+    // Create simple labeled icons for Source and Destination
+    this.sourceIcon = Leaflet.divIcon({
+      html: `<div class="marker-badge marker-source">S</div>`,
+      className: 'marker-div-icon',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+
+    this.destIcon = Leaflet.divIcon({
+      html: `<div class="marker-badge marker-dest">D</div>`,
+      className: 'marker-div-icon',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+
     // If we already have incidents, center the map on the first one
     if (this.incidents.length > 0) {
       this.map.setView([this.incidents[0].latitude, this.incidents[0].longitude], 12);
@@ -399,7 +497,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     ]);
 
     // Create new heatmap layer
-    this.heatmapLayer = (L as any).heatLayer(points, {
+    this.heatmapLayer = (Leaflet as any).heatLayer(points, {
       radius: 25,
       blur: 15,
       maxZoom: 10,
@@ -418,14 +516,35 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       
       if (isNaN(lat) || isNaN(lng)) return;
 
-      if (this.markers[key]) this.map.removeLayer(this.markers[key]);
-      
-      const color = e.status === 'escalated' ? 'red' : (e.status === 'pending' ? 'orange' : 'blue');
-      const marker = L.circleMarker([lat, lng], {
-        color, radius: 10, fillOpacity: 0.8
-      }).bindPopup(`<b>${(e.emergency_type || e.type || 'Incident').toUpperCase()}</b><br>Status: ${e.status}<br><small>${e.description || ''}</small>`);
-      
-      marker.addTo(this.map);
+      if (this.markers[key]) {
+        const old = this.markers[key];
+        if (this.cluster) this.cluster.removeLayer(old);
+        else this.map.removeLayer(old);
+      }
+
+      // Use special icons/labels for Source/Destination when flagged in incident data
+      let marker: any;
+      const isSource = !!e.is_source;
+      const isDest = !!e.is_destination;
+
+      if (isSource || isDest) {
+        const icon = isSource ? this.sourceIcon : this.destIcon;
+        marker = Leaflet.marker([lat, lng], { icon });
+        // Attach a permanent tooltip label next to the marker
+        const labelText = isSource ? `Source: ${e.name || 'Dispatch Center'}` : `Destination: ${e.emergency_type || 'Incident Location'}`;
+        marker.bindTooltip(labelText, { permanent: true, direction: 'right', className: 'marker-label' });
+        // store role for fitBounds filtering
+        (marker as any).options.role = isSource ? 'source' : 'destination';
+      } else {
+        const color = e.status === 'escalated' ? 'red' : (e.status === 'pending' ? 'orange' : 'blue');
+        marker = Leaflet.circleMarker([lat, lng], { color, radius: 10, fillOpacity: 0.8 })
+          .bindPopup(`<b>${(e.emergency_type || e.type || 'Incident').toUpperCase()}</b><br>Status: ${e.status}<br><small>${e.description || ''}</small>`);
+        (marker as any).options.role = 'incident';
+      }
+
+      if (this.cluster) this.cluster.addLayer(marker);
+      else marker.addTo(this.map);
+
       this.markers[key] = marker;
     });
   }
@@ -437,20 +556,97 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
     if (isNaN(lat) || isNaN(lng)) return;
 
-    if (this.markers[key]) this.map.removeLayer(this.markers[key]);
+    // Remove old marker if present
+    // If clustering is enabled, remove via cluster; otherwise remove from map
+    if (this.markers[key]) {
+      const old = this.markers[key];
+      if (this.cluster) this.cluster.removeLayer(old);
+      else this.map.removeLayer(old);
+    }
 
-    const icon = L.divIcon({
-      html: '<div style="font-size: 24px;">🚑</div>',
-      className: 'responder-icon',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
-    });
+    // Choose color based on role if provided
+    const role = data.role || '';
+    const bg = role === 'police' ? '#0ea5a4' : (role === 'fire' ? '#ef4444' : (role === 'ambulance' ? '#6366f1' : '#f97316'));
 
-    const marker = L.marker([lat, lng], { icon })
-      .bindPopup(`Responder ID: ${data.responderId}`)
-      .addTo(this.map);
-    
+    const html = `<div style="background:${bg};width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3)">${(data.name?data.name[0]:'R')}</div>`;
+
+    const icon = Leaflet.divIcon({ html, className: 'responder-icon', iconSize: [36, 36], iconAnchor: [18, 18] });
+
+    const marker = Leaflet.marker([lat, lng], { icon })
+      .bindPopup(`<b>${data.name || 'Responder'}</b><br>ID: ${data.responderId}<br>Role: ${role || '—'}<br>Updated: ${new Date((data.ts || Date.now()/1000)*1000).toLocaleString()}`);
+
+    // Add to cluster if available, else to map
+    if (this.cluster) this.cluster.addLayer(marker);
+    else marker.addTo(this.map);
+
     this.markers[key] = marker;
+
+    // Animate marker movement if it existed before (smooth transition)
+    // We'll perform a simple interpolation from previous position if available
+    // (the previous marker was removed above, but we can check responderList for last coords)
+    const prev = this.responderList.find(r => r.responderId === data.responderId);
+    if (prev && typeof prev.lat === 'number' && typeof prev.lng === 'number') {
+      this.animateMarker(this.markers[key], [prev.lat, prev.lng], [lat, lng], 800);
+    }
+
+    // Update responder list (or add)
+    const existing = this.responderList.find(r => r.responderId === data.responderId);
+    const entry = { responderId: String(data.responderId), name: data.name, role: data.role, lat, lng, ts: data.ts };
+    if (existing) {
+      Object.assign(existing, entry);
+    } else {
+      this.responderList.unshift(entry);
+      // keep list reasonably small
+      if (this.responderList.length > 50) this.responderList.pop();
+    }
+  }
+
+  centerOnResponder(responderId: string) {
+    const key = `res_${responderId}`;
+    const marker = this.markers[key];
+    if (marker && this.map) {
+      this.map.setView(marker.getLatLng(), 15, { animate: true });
+      marker.openPopup();
+    } else {
+      const r = this.responderList.find(rr => rr.responderId === responderId);
+      if (r && this.map && typeof r.lat === 'number' && typeof r.lng === 'number') {
+        this.map.setView([r.lat, r.lng], 15, { animate: true });
+      }
+    }
+  }
+
+  fitAll() {
+    const latlngs: any[] = [];
+    Object.keys(this.markers).forEach(k => {
+      const m = this.markers[k];
+      if (m && m.getLatLng) latlngs.push(m.getLatLng());
+    });
+    if (latlngs.length === 0 && this.incidents.length > 0) {
+      latlngs.push(...this.incidents.map(i => Leaflet.latLng(i.latitude, i.longitude)));
+    }
+    if (latlngs.length > 0) this.map.fitBounds(Leaflet.latLngBounds(latlngs), { padding: [60, 60] });
+  }
+
+  // Smoothly animate a marker from 'from' [lat,lng] to 'to' [lat,lng]
+  animateMarker(marker: any, from: [number, number], to: [number, number], duration = 800) {
+    if (!marker || !this.map) return;
+    const start = { lat: from[0], lng: from[1] };
+    const end = { lat: to[0], lng: to[1] };
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      const lat = start.lat + (end.lat - start.lat) * t;
+      const lng = start.lng + (end.lng - start.lng) * t;
+      marker.setLatLng([lat, lng]);
+      if (t < 1) requestAnimationFrame(step);
+      else {
+        marker.setLatLng([end.lat, end.lng]);
+        if (this.cluster) (this.cluster as any).refreshClusters();
+      }
+    };
+
+    requestAnimationFrame(step);
   }
 
   approve(id: number) {

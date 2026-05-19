@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Output, EventEmitter } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { EmergencyService } from '../../emergency.service';
 import { EmergencyRequestComponent } from '../../emergency-request.component';
@@ -13,6 +14,7 @@ import { EmergencyRequestComponent } from '../../emergency-request.component';
 })
 export class CitizenPanelComponent implements OnInit, OnDestroy {
   emergencies: any[] = [];
+  @Output() reportCreated = new EventEmitter<any>();
   private sub?: Subscription;
 
   constructor(private emergencyService: EmergencyService) {}
@@ -28,6 +30,17 @@ export class CitizenPanelComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+  }
+
+  handleSubmitted(report: any): void {
+    if (report?.id) {
+      const exists = this.emergencies.some((item) => item.id === report.id);
+      if (!exists) {
+        this.emergencies = [report, ...this.emergencies];
+      }
+    }
+    this.reportCreated.emit(report);
+    this.refresh();
   }
 
   refresh(): void {
