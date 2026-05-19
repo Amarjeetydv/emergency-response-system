@@ -6,9 +6,7 @@ node_modules/
 .env.local
 .env.*.local
 
-# Firebase / Google Cloud Secrets
-firebase-service-account.json
-serviceAccountKey.json
+ 
 
 # Local uploads
 backend/uploads/

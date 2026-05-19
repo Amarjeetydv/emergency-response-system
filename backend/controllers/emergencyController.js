@@ -2,13 +2,6 @@ const Emergency = require('../models/emergencyModel');
 const Log = require('../models/logModel');
 const Message = require('../models/messageModel');
 
-let OpenAI;
-try {
-  OpenAI = require('openai');
-} catch (e) {
-  console.warn('OpenAI module not found. AI classification features will be disabled.');
-}
-
 let ImageKit;
 try {
   ImageKit = require('imagekit');
@@ -17,18 +10,6 @@ try {
 }
 
 const ALLOWED_STATUSES = ['pending', 'accepted', 'in_progress', 'completed', 'cancelled', 'escalated'];
-
-// Initialize OpenAI (ensure OPENAI_API_KEY is in your .env)
-let openai = null;
-if (OpenAI && process.env.OPENAI_API_KEY) {
-  try {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  } catch (error) {
-    console.error('OpenAI initialization failed:', error.message);
-  }
-}
 
 // Initialize ImageKit
 let imagekit = null;
@@ -97,28 +78,7 @@ function validateTransition(current, next, { isAdmin, userId, row }) {
   return { ok: false, message: `Invalid status transition from ${current} to ${next}` };
 }
 
-/**
- * Uses AI to classify the emergency based on user description
- */
-async function classifyEmergencyText(text) {
-  if (!openai) return null;
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are an emergency dispatcher. Classify the user's input into exactly one of these categories: police, ambulance, fire, or other. Only output the category name in lowercase." },
-        { role: "user", content: text }
-      ],
-      temperature: 0,
-    });
-    const category = response.choices[0].message.content.trim().toLowerCase();
-    return ['police', 'ambulance', 'fire'].includes(category) ? category : 'other';
-  } catch (error) {
-    console.error('NLP Classification Error:', error);
-    return null; // Return null so we can fallback to the manual type
-  }
-}
+// No AI classification: project uses manual `emergency_type` provided by the user.
 
 // @desc    Report a new emergency (citizen)
 // @route   POST /api/emergencies
@@ -148,11 +108,8 @@ const createEmergency = async (req, res) => {
   try {
     let finalType = finalEmergencyType;
 
-    // If description is provided, use AI to classify or verify the type
-    if (description && description.length > 5) {
-      const aiType = await classifyEmergencyText(description).catch(() => null);
-      if (aiType) finalType = aiType;
-    }
+    // Use the provided `emergency_type` (no automatic AI classification)
+    // finalType is already set from the request payload
 
     let media_url = null;
     if (req.file && imagekit) {

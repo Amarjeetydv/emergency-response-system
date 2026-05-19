@@ -9,7 +9,7 @@ A comprehensive full-stack application designed to coordinate emergency response
 - **Real-time Status Updates**: Track the status of your emergency request
 - **Multiple Emergency Types**: Support for various emergency categories
 - **Location-based Services**: Map integration for accurate emergency location
-- **Notifications**: Firebase push notifications for status updates
+ 
 
 ### For Emergency Responders
 - **Emergency Dashboard**: View active and incoming emergency requests
@@ -27,25 +27,25 @@ A comprehensive full-stack application designed to coordinate emergency response
 
 ## 🛠️ Tech Stack
 
+Note: Some integrations (ImageKit) are optional — the code contains guarded support for them and they are only active when corresponding environment variables are set.
+
 ### Backend
 - **Runtime**: Node.js
 - **Framework**: Express.js 5.x
 - **Database**: MySQL 8.x
-- **Real-time Communication**: Socket.io 4.x with Redis adapter
+- **Real-time Communication**: Socket.io 4.x
 - **Authentication**: JWT (JSON Web Tokens)
 - **Password Hashing**: bcryptjs
-- **File Upload**: Multer with ImageKit integration
-- **Notifications**: Firebase Admin SDK
+- **File Upload**: Multer (ImageKit optional)
 - **Task Scheduling**: node-cron
-- **AI Integration**: OpenAI API
-- **Caching**: Redis
+- **Caching**: (none by default)
 
 ### Frontend
 - **Framework**: Angular 20.x
 - **Language**: TypeScript 5.x
-- **UI Components**: Angular Material (implied by structure)
+ - **UI Components**: Custom SCSS components (no Angular Material)
 - **Real-time Communication**: Socket.io Client
-- **Authentication**: Firebase Auth with custom JWT
+ - **Authentication**: JWT (JSON Web Tokens)
 - **Mapping**: Leaflet.js with heat map visualization
 - **Styling**: SCSS
 - **HTTP Client**: Angular HttpClient
@@ -123,7 +123,7 @@ Before you begin, ensure you have the following installed:
 - **Node.js** (v18.0.0 or higher)
 - **npm** (v8.0.0 or higher)
 - **MySQL** (v8.0 or higher)
-- **Redis** (v6.0 or higher)
+ 
 - **Angular CLI** (v20.0.0) - `npm install -g @angular/cli`
 
 ## 🚀 Installation & Setup
@@ -185,10 +185,7 @@ DB_PASSWORD=your_password
 DB_NAME=emergency_response_system
 DB_PORT=3306
 
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
+ 
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key
@@ -198,18 +195,12 @@ JWT_EXPIRE=7d
 CORS_ORIGINS=http://localhost:4200,http://localhost:5000
 FRONTEND_URL=http://localhost:4200
 
-# Firebase Configuration
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_PRIVATE_KEY=your_private_key
-FIREBASE_CLIENT_EMAIL=your_client_email
+# ImageKit Configuration (optional)
+# IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
+# IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
+# IMAGEKIT_URL_ENDPOINT=your_imagekit_url_endpoint
 
-# ImageKit Configuration
-IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
-IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
-IMAGEKIT_URL_ENDPOINT=your_imagekit_url_endpoint
-
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key
+ 
 ```
 
 ### 5. Frontend Setup
@@ -232,16 +223,7 @@ Create an environment configuration file `src/environments/environment.ts`:
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:5000/api',
-  socketUrl: 'http://localhost:5000',
-  firebase: {
-    apiKey: 'your_firebase_api_key',
-    authDomain: 'your_auth_domain',
-    projectId: 'your_project_id',
-    storageBucket: 'your_storage_bucket',
-    messagingSenderId: 'your_messaging_sender_id',
-    appId: 'your_app_id',
-    measurementId: 'your_measurement_id'
-  }
+  socketUrl: 'http://localhost:5000'
 };
 ```
 
@@ -268,37 +250,28 @@ npm start
 
 The frontend application will run on `http://localhost:4200`
 
-### Start Redis Server
-
-In another terminal:
-
-```bash
-redis-server
-```
+ 
 
 ## 🔌 API Endpoints
 
 ### Authentication Routes (`/api/auth`)
-- `POST /register` - User registration
-- `POST /login` - User login
-- `POST /logout` - User logout
-- `GET /profile` - Get user profile
-- `PUT /profile` - Update user profile
+- `POST /register` - Create a new user (returns token + user)
+- `POST /login` - Authenticate and receive JWT + user info
+- `GET /users` - (admin) List all users
+- `PATCH /users/:id/approve` - (admin) Approve responder accounts
+- `PATCH /users/:id/role` - (admin) Update a user's role
+- `DELETE /users/:id` - (admin) Delete a user
 
-### Emergency Routes (`/api/emergency`)
-- `POST /create` - Create new emergency request
-- `GET /list` - List emergencies (filtered by role)
-- `GET /:id` - Get emergency details
-- `PUT /:id/status` - Update emergency status
-- `POST /:id/message` - Add message to emergency
-- `POST /:id/assign` - Assign responder to emergency
+### Emergency Routes (`/api/emergencies`)
+- `POST /api/emergencies` - Create new emergency request (multipart/form-data, protected; citizens only)
+- `GET /api/emergencies` - List emergencies (citizens see their own; responders/admins see feed)
+- `POST /api/emergencies/accept-request` - Atomically accept/claim a pending request (protected)
+- `PUT /api/emergencies/:id` - Update emergency status (protected)
+- `GET /api/emergencies/:id/chat` - Get chat history for an emergency
 
 ### Admin Routes (`/api/admin`)
-- `GET /users` - List all users
-- `GET /statistics` - System statistics
-- `GET /logs` - Activity logs
-- `POST /categories` - Manage emergency categories
-- `PUT /emergency/:id/escalate` - Escalate emergency
+- `GET /api/admin/logs` - (admin) Retrieve recent audit logs
+- `GET /api/admin/analytics` - (admin) Basic system analytics (counts, responder stats)
 
 ## 🔐 Authentication & Authorization
 
@@ -318,7 +291,7 @@ Socket.io is used for:
 - Status notifications
 - User presence tracking
 
-Redis adapter is used for horizontal scaling across multiple server instances.
+Socket.io is used for real-time messaging and notifications.
 
 ## 📊 Database Schema
 
@@ -350,7 +323,7 @@ For issues and questions, please create an issue in the repository or contact th
 - Use `npm run dev` in backend for automatic server restart on file changes
 - Check backend logs in terminal for debugging
 - Use Angular DevTools browser extension for frontend debugging
-- Redis monitoring: Use `redis-cli monitor` for real-time command monitoring
+ 
 
 ## 📚 Additional Resources
 
@@ -358,7 +331,7 @@ For issues and questions, please create an issue in the repository or contact th
 - [Angular Documentation](https://angular.io/docs)
 - [Socket.io Documentation](https://socket.io/docs/)
 - [MySQL Documentation](https://dev.mysql.com/doc/)
-- [Firebase Documentation](https://firebase.google.com/docs)
+ 
 
 ---
 
