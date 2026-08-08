@@ -14,14 +14,21 @@ const Emergency = {
     return result.insertId;
   },
 
-  findAll: async () => {
-    const sql = `
+  findAll: async (limit, offset) => {
+    let sql = `
       SELECT e.*, u.name as citizen_name, r.name as responder_name
       FROM emergencies e
       JOIN users u ON e.citizen_id = u.id
       LEFT JOIN users r ON e.assigned_responder = r.id
       ORDER BY e.created_at DESC
     `;
+    if (limit !== undefined && offset !== undefined) {
+      const cleanLimit = Math.max(0, parseInt(limit));
+      const cleanOffset = Math.max(0, parseInt(offset));
+      if (!isNaN(cleanLimit) && !isNaN(cleanOffset)) {
+        sql += ` LIMIT ${cleanLimit} OFFSET ${cleanOffset}`;
+      }
+    }
     const [rows] = await db.execute(sql);
     return rows;
   },
@@ -40,8 +47,8 @@ const Emergency = {
     return rows;
   },
 
-  findByCitizenId: async (citizenId) => {
-    const sql = `
+  findByCitizenId: async (citizenId, limit, offset) => {
+    let sql = `
       SELECT e.*, u.name as citizen_name, r.name as responder_name
       FROM emergencies e
       JOIN users u ON e.citizen_id = u.id
@@ -49,6 +56,13 @@ const Emergency = {
       WHERE e.citizen_id = ?
       ORDER BY e.created_at DESC
     `;
+    if (limit !== undefined && offset !== undefined) {
+      const cleanLimit = Math.max(0, parseInt(limit));
+      const cleanOffset = Math.max(0, parseInt(offset));
+      if (!isNaN(cleanLimit) && !isNaN(cleanOffset)) {
+        sql += ` LIMIT ${cleanLimit} OFFSET ${cleanOffset}`;
+      }
+    }
     const [rows] = await db.execute(sql, [citizenId]);
     return rows;
   },
@@ -117,6 +131,17 @@ const Emergency = {
     `;
     const [rows] = await db.execute(sql, [thresholdMinutes]);
     return rows;
+  },
+
+  getAnalyticsSummary: async () => {
+    const [totalRows] = await db.execute("SELECT COUNT(*) as total FROM emergencies");
+    const [statusRows] = await db.execute(
+      "SELECT status, COUNT(*) as count FROM emergencies GROUP BY status"
+    );
+    return {
+      total: totalRows[0]?.total || 0,
+      statusCounts: statusRows
+    };
   }
 };
 

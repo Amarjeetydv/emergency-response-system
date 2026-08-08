@@ -1,15 +1,68 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const userModel = require("../models/userModel");
-const User = userModel; // fix: User is used below
+const Token = require("../models/tokenModel");
+const User = userModel;
 
-// Generate JWT
-const generateToken = (user) => {
+// Helper: access token (15 mins)
+const generateAccessToken = (user) => {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: "30d" }
+    { expiresIn: "15m" }
   );
+};
+
+// Helper: parse cookies from header
+const getRefreshTokenFromCookie = (req) => {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+    const [key, value] = cookie.split('=').map((c) => c.trim());
+    if (key && value) acc[key] = value;
+    return acc;
+  }, {});
+  return cookies.refreshToken || null;
+};
+
+// Helper: set refresh token cookie
+const setRefreshTokenCookie = async (res, userId) => {
+  const rawToken = crypto.randomBytes(40).toString('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  await Token.create(userId, rawToken, expiresAt);
+
+  const cookieOptions = [
+    `refreshToken=${rawToken}`,
+    'HttpOnly',
+    'Path=/api/auth',
+    `Max-Age=${7 * 24 * 60 * 60}`,
+    'SameSite=Lax',
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    cookieOptions.push('Secure');
+  }
+
+  res.setHeader('Set-Cookie', cookieOptions.join('; '));
+};
+
+// Helper: clear refresh token cookie
+const clearRefreshTokenCookie = (res) => {
+  const cookieOptions = [
+    'refreshToken=',
+    'HttpOnly',
+    'Path=/api/auth',
+    'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+    'SameSite=Lax',
+  ];
+
+  if (process.env.NODE_ENV === 'production') {
+    cookieOptions.push('Secure');
+  }
+
+  res.setHeader('Set-Cookie', cookieOptions.join('; '));
 };
 
 
@@ -22,6 +75,15 @@ const registerUser = async (req, res) => {
       message: "Missing required fields",
       required: ["name", "email", "password", "role"],
     });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Invalid email address format" });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters long" });
   }
 
   try {
@@ -50,10 +112,11 @@ const registerUser = async (req, res) => {
     });
 
     const createdUser = await User.findById(userId);
+    await setRefreshTokenCookie(res, userId);
 
     return res.status(201).json({
       message: "User registered successfully",
-      token: generateToken(createdUser),
+      token: generateAccessToken(createdUser),
       user: createdUser, // must include role
     });
   } catch (error) {
@@ -81,9 +144,11 @@ const loginUser = async (req, res) => {
 
     if (!ok) return res.status(401).json({ message: "Invalid email or password" });
 
+    await setRefreshTokenCookie(res, user.id);
+
     return res.status(200).json({
       message: "Login successful",
-      token: generateToken(user),
+      token: generateAccessToken(user),
       user: {
         id: user.id,
         name: user.name,
@@ -100,10 +165,15 @@ const loginUser = async (req, res) => {
 
 // Get all users (for admin dashboard)
 const getAllUsers = async (req, res) => {
+  const page = req.query.page ? parseInt(req.query.page) : 1;
+  const limit = req.query.limit ? parseInt(req.query.limit) : 50;
+  const offset = (page - 1) * limit;
+
   try {
-    const users = await User.getAll();
+    const users = await User.getAll(limit, offset);
     res.json(users);
   } catch (error) {
+    console.error('getAllUsers Controller Error:', error);
     res.status(500).json({ message: 'Failed to fetch users' });
   }
 };
@@ -168,6 +238,63 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const refreshAccessToken = async (req, res) => {
+  const refreshToken = getRefreshTokenFromCookie(req);
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh token required' });
+  }
+
+  try {
+    const tokenRecord = await Token.findByToken(refreshToken);
+    if (!tokenRecord) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+
+    const user = await User.findById(tokenRecord.user_id);
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    // Token rotation: generate new raw token, replace old hash with new hash in DB
+    const newRefreshToken = crypto.randomBytes(40).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await Token.replace(refreshToken, newRefreshToken, expiresAt);
+
+    const cookieOptions = [
+      `refreshToken=${newRefreshToken}`,
+      'HttpOnly',
+      'Path=/api/auth',
+      `Max-Age=${7 * 24 * 60 * 60}`,
+      'SameSite=Lax',
+    ];
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.push('Secure');
+    }
+    res.setHeader('Set-Cookie', cookieOptions.join('; '));
+
+    const accessToken = generateAccessToken(user);
+    return res.status(200).json({ token: accessToken });
+  } catch (err) {
+    console.error('Refresh token error:', err.message);
+    clearRefreshTokenCookie(res);
+    return res.status(401).json({ message: 'Session expired or invalidated' });
+  }
+};
+
+const logoutUser = async (req, res) => {
+  const refreshToken = getRefreshTokenFromCookie(req);
+  if (refreshToken) {
+    try {
+      await Token.revoke(refreshToken);
+    } catch (err) {
+      console.error('Failed to revoke refresh token on logout:', err);
+    }
+  }
+  clearRefreshTokenCookie(res);
+  return res.status(200).json({ message: 'Logged out successfully' });
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -175,4 +302,6 @@ module.exports = {
   approveResponder,
   updateUserRole,
   deleteUser,
+  refreshAccessToken,
+  logoutUser,
 };
